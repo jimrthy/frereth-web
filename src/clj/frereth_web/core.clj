@@ -1,7 +1,21 @@
 (ns frereth-web.core
+  (:require [com.stuartsierra.component :as component]
+            [frereth-web.system :as sys])
+  ;; Q: Do I want to do this?
+  ;; It just seems to cause trouble
   (:gen-class))
 
 (defn -main
-  "I don't do a whole lot ... yet."
+  "This is where immutant will kick off"
   [& args]
-  (println "Hello, World!"))
+  ;; This is going to fail right off the bat:
+  ;; I have to specify a system descriptor
+  (let [initial (sys/ctor)
+        active (component/start initial)]
+    (try
+      ;; Just wait for the promise to be delivered
+      @(:done active)
+      (finally
+        ;; TODO: Need to tear down the actual servlet
+        ;; There's more involved here than meets the eye
+        (component/stop active)))))

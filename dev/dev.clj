@@ -7,7 +7,35 @@
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer (refresh refresh-all)]
             [com.stuartsierra.component :as component]
-            [ribol.core :refer (raise)]))
+            [figwheel-sidecar.repl-api :as repl-api]
+            [frereth-web.system :as system]
+            [ribol.core :refer (raise)]
+            [schema.core :as s]
+            [taoensso.timbre :as log]))
+
+;; We wrap the system in a system wrapper so that we can define a
+;; print-method that will avoid recursion.
+(defrecord SystemWrapper [p]
+  clojure.lang.IDeref
+  (deref [this] (deref p))
+  clojure.lang.IFn
+  (invoke [this a] (p a)))
+
+(defmethod print-method SystemWrapper [_ writer]
+  (.write writer "#system \"<system>\""))
+
+(defmethod print-dup SystemWrapper [_ writer]
+  (.write writer "#system \"<system>\""))
+
+(.addMethod clojure.pprint/simple-dispatch SystemWrapper
+   (fn [x]
+     (print-method x *out*)))
+
+(defn new-system-wrapper []
+  (->SystemWrapper (promise)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Components boiler-plate cruft
 
 (def system nil)
 
@@ -15,32 +43,23 @@
   "Constructs the current development system."
   []
   (set! *print-length* 50)
-  (comment (dyn/lint))
-
-  ;; TODO: Put these in the database
-  (let [fsm-descr (cfg/default-fsm)
-        db-url "datomic:free://localhost:4334/frereth-renderer"
-        cfg {:database-url db-url
-             :fsm-description fsm-descr
-             :initial-state :disconnected
-             :platform :desktop
-             :window {:title "Frereth"
-                      :width 1440
-                      :height 1080}}]
-    
-    ;; Note that this makes us reliant on datomic free for tracking
-    ;; sessions.
-    ;; Which doesn't seem too awful...but it means that we have to
-    ;; be sure that transactor is running before we try to start this.
-
-    ;; TODO: This Configuration really needs its own Schema
-    (alter-var-root #'system
-                    (constantly (system/build cfg)))))
+  (alter-var-root #'system
+                  (constantly (system/ctor "frereth-web.dev.system.edn"))))
 
 (defn start
   "Starts the current development system."
   []
-  (alter-var-root #'system component/start))
+  (try
+    (alter-var-root #'system component/start)
+    (catch RuntimeException ex
+      (try
+        (log/error ex "Failed to start system")
+        (catch RuntimeException ex1
+          ;; It seems like I'm getting here when we can't pretty-print
+          ;; the stack trace from the original ex
+          (log/error ex1 "Failed to log a system start error\n"
+                     (pr-str ex))))
+      (throw ex))))
 
 (defn stop
   "Shuts down and destroys the current development system."
@@ -48,7 +67,7 @@
   (alter-var-root #'system
     (fn [s] (when s (component/stop s)))))
 
-(defn go-go
+(defn go
   "Initializes the current development system and starts it running.
 Can't just call this go: that conflicts with a macro from core.async."
   []
@@ -74,3 +93,20 @@ Can't just call this go: that conflicts with a macro from core.async."
     (catch clojure.lang.ExceptionInfo ex
       (pprint ex)
       (println "Refresh failed"))))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Dev-time conveniences
+;;; (though it's important to remember that everything in this
+;;; namespace is just a dev-time convenience)
+
+;; Set up a REPL environment.
+;; Q: Do I want to add this to start/stop?
+(comment (def repl-env nil))
+
+(defn cljs
+  "Switch to the cljs REPL
+
+There's an emacs plugin for running both @ same time
+TODO: switch to it"
+  []
+  (repl-api/cljs-repl))

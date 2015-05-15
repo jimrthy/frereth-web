@@ -59,9 +59,9 @@
                  ;;; Generally Useful
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
-                 [figwheel "0.3.1" :exclusions [#_org.codehaus.plexus/plexus-utils]]
+                 [figwheel "0.3.1"]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
-                 [figwheel-sidecar "0.3.1" :exclusions [org.codehaus.plexus/plexus-utils]]
+                 [figwheel-sidecar "0.3.1"]
                  [im.chit/ribol "0.4.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha" :exclusions [org.clojure/clojure]]
                  [org.clojure/core.match "0.2.2"]
