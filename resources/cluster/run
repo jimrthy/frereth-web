@@ -1,7 +1,27 @@
 #! /bin/bash
 
-lein immutant uberwar
+# TODO: Consider adding the --rm flags so they
+# get deleted immediately after stopping.
+# This makes a lot more sense for the web
+# server than the database
 
-docker build --tag=frereth/web
+# These really need to happen in different shells
+# And, honestly, only the forward-facing web server should
+# have bound port(s)
 
-docker run -p 8080:8080 frereth/web
+docker run --name db -d frereth/db
+
+# This chain is really far too simple.
+# There needs to be a frereth server between the web server
+# and the database
+# It also seems like there also needs to be a front-end
+# web server in front of this one, running nginx or apache.
+# YAGNI.
+# Communications w/ the servers will happen over an encrypted
+# channel like 0mq. This connection is only intended
+# to happen over localhost.
+
+# There's definitely a tradeoff to consider here.
+docker run -d -rm -p 8080:8080 --name web --link db:db frereth/web
+
+

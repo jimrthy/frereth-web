@@ -1,0 +1,11 @@
+#! /bin/bash
+
+# Note that, realistically, there isn't much reason
+# to run these as a set.
+# Even though creating an uberwar takes forever,
+# it'll happen a lot more often than building
+# the database server.
+lein immutant uberwar
+docker build --tag=frereth/web wildfly/
+
+docker build --tag=frereth/db db/
