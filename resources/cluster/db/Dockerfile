@@ -9,7 +9,8 @@
 # I can't imagine they'd object to this particular use
 # (why else would they have supplied what they did?)
 
-# TODO: Contact timgluz to verify that.
+# 2015MAY16:
+# I've contacted timgluz@gmail.com to verify that.
 
 FROM dockerfile/java
 
