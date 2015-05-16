@@ -43,8 +43,10 @@
   "Constructs the current development system."
   []
   (set! *print-length* 50)
+  ;; Q: Will there ever be any valid reason to use a different
+  ;; system descriptor for dev that prod?
   (alter-var-root #'system
-                  (constantly (system/ctor "frereth-web.dev.system.edn"))))
+                  (constantly (system/ctor #_"frereth-web.dev.system.edn" "frereth-web.prod.system.edn"))))
 
 (defn start
   "Starts the current development system."

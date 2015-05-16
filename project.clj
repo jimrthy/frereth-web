@@ -99,6 +99,8 @@
              ;; :server-logfile "tmp/logs/figwheel-logfile.log" 
              }
 
+  :immutant {:init "frereth-web.core/-main"}
+
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main ^:skip-aot frereth-web.core
@@ -108,7 +110,11 @@
             [lein-figwheel "0.3.1" :exclusions [org.codehaus.plexus/plexus-utils
                                                 org.clojure/clojure]]]
 
-  :profiles {:dev-base {:plugins [#_[lein-figwheel "0.3.1" :exclusions [org.clojure/clojurescript
+  :profiles {:dev-base {:immutant {:context-path "/frereth"
+                                   :nrepl-port 4242
+                                   :lein-profiles [:dev]
+                                   :env :dev}
+                        :plugins [#_[lein-figwheel "0.3.1" :exclusions [org.clojure/clojurescript
                                                                         org.codehaus.plexus/plexus-utils]]]
                         :resource-paths ["dev-resources"]
                         :source-paths ["dev"]}

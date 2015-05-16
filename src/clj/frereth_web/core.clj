@@ -11,7 +11,7 @@
   [& args]
   ;; This is going to fail right off the bat:
   ;; I have to specify a system descriptor
-  (let [initial (sys/ctor)
+  (let [initial (sys/ctor "frereth-web.prod.system.edn")
         active (component/start initial)]
     (try
       ;; It looks like just starting the web server should be enough
