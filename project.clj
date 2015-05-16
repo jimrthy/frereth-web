@@ -21,7 +21,7 @@
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [[com.stuartsierra/component "0.2.3"]
+  :dependencies [;; Probably only useful server-side
                  [com.taoensso/timbre "3.4.0" :exclusions [com.taoensso/encore
                                                            org.clojure/tools.reader]]
                  [org.clojure/clojure "1.7.0-beta3"]
@@ -50,21 +50,22 @@
                  ;;; Admin-Specific
                  ;;; These really seem like they belong in their own profile.
                  ;;; TODO: Figure out why that isn't working
-                 ;; I love this in theory. In practice...it's based on an ancient version
-                 ;; of datomic-schema
-                 #_[datomic-schematode "0.1.3-RC1" :exclusions [com.datomic/datomic-free]]
-                 [datomic-schema "1.3.0"]
-                 [io.rkn/conformity "0.3.4" :exclusions [com.datomic/datomic-free]]
+                 ;;; Then again, these simply do not belong in here.
+                 #_[datomic-schema "1.3.0"]
+                 #_[io.rkn/conformity "0.3.4" :exclusions [com.datomic/datomic-free]]
                  
                  ;;; Generally Useful
+                 [com.stuartsierra/component "0.2.3"]
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
                  [figwheel "0.3.1"]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
                  [figwheel-sidecar "0.3.1"]
+                 [mvxcvi/puget "0.8.1"]
                  [im.chit/ribol "0.4.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha" :exclusions [org.clojure/clojure]]
                  [org.clojure/core.match "0.2.2"]
+                 [org.clojure/tools.reader "0.9.2"]
                  [prismatic/plumbing "0.4.3"]]
   :description "Another waffle in my torment about making this web-based"
 
