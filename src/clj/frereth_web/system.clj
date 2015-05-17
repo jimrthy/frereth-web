@@ -3,24 +3,10 @@
 
 It's halfway tempting to turn this into its own library,
 just because I find myself copy/pasting it around a lot.
-
-UPDATE: Great news! AvisoNovate on github has gone to
-the trouble of doing that for me. Which means that
-almost all of this should be able to go away.
-
-Well, it's actually something drastically different.
-aviso.config's all about merging the configuration
-data from everywhere to pass into the Component
-description.
-
-Which leaves me doubting the wisdom of trying to
-move the Component system itself out of here and
-into its own config file.
-
-TODO: Think that through."
-  (:require [clojure.java.io :as io]
+"
+  (:require [clojure.edn :as edn]
+            [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
-            [frereth-web.db.core :as db]
             [frereth-common.util :as common]
             [io.aviso.config :as cfg]
             [ribol.core :refer (raise)]
@@ -31,88 +17,164 @@ TODO: Think that through."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
+(def NameSpace s/Symbol)
+(def SchemaName s/Symbol)
+
+(def SchemaDescription
+  "Really just a map of symbols marking a namespace to
+  symbols naming schemata in that namespace"
+  {NameSpace (s/either SchemaName [SchemaName])})
+
+(def Schema
+  "An individual description"
+  s/Any)
+
+(def Schemata
+  "Really just so I have a meaningful name to call these things"
+  [Schema])
+
+(def ComponentName s/Keyword)
+(def ComponentInitializer (s/either s/Symbol [(s/one s/Symbol "name") s/Any]))
+(def InitializationMap {ComponentName ComponentInitializer})
+
+(def ComponentInstanceName
+  "TODO: Try redefining ComponentName as this
+I'm just not sure that'll work in non-sequences
+(such as when I'm using it as the key in a map)"
+  (s/one s/Keyword "name"))
+(def ComponentInstance (s/one s/Any "instance"))
+(def Component [ComponentInstanceName ComponentInstance])
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internals
 
+(s/defn load-var :- s/Any
+  "Get the value of var inside namespace"
+  [namespace :- s/Symbol
+   var-name :- s/Symbol]
+  (let [sym (symbol (str namespace "/" var-name))]
+    (eval sym)))
+
+(s/defn require-schematic-namespaces!
+  "Makes sure all the namespaces where the schemata
+are found are available, so we can access the schemata"
+  [d :- SchemaDescription]
+  (dorun (map require (keys d))))
+
 (comment
-  (s/defn initialize :- [[(s/one s/Keyword "name") (s/one s/Any "instance")]]
-    "require the individual namespaces and call each Component's constructor,
+  (mapcat (fn [[k v]]
+            (println "Extracting" v "from ns" k)
+            (if (symbol? v)
+              (load-var k v)
+              (mapcat (partial load-var k) v)))
+          {'one '[schema-a schema-b]
+           'two 'schema-a}))
+
+(s/defn extract-schema :- Schemata
+  "Returns a seq of the values of the vars in each namespace"
+  [d :- SchemaDescription]
+  (mapcat (fn [[k v]]
+         (if (symbol? v)
+           [(load-var k v)]
+           (map (partial load-var k) v)))
+       d))
+
+(s/defn translate-schematics! :- Schemata
+  "require the namespace and load the schema specified in each.
+
+N.B. Doesn't even think about trying to be java friendly. No defrecord!"
+  [d :- SchemaDescription]
+  (require-schematic-namespaces! d)
+  (extract-schema d))
+
+(s/defn ^:always-validate initialize! :- [Component]
+  "require the individual namespaces and call each Component's constructor,
 returning a seq of name/instance pairs that probably should have been a map
 
 N.B. this returns key-value pairs that are suitable for passing to dependencies
 as the last argument of apply"
-    [descr :- {s/Keyword (s/either s/Symbol [(s/one s/Symbol "name") s/Any])}
-     config-options :- {s/Any s/Any}]
-    (mapcat (fn [[name ctor]]
-              ;; If the config file needs parameters, it can
-              ;; specify the "value" of each component as
-              ;; a sequence
-              (let [[ctor-sym args] (if (symbol? ctor)
-                                      [ctor [{}]]  ; no args supplied
-                                      [(first ctor) (rest ctor)])]
-                ;; Called for the side-effects
-                (-> ctor-sym namespace symbol require)
-                (let [real-ctor (resolve ctor-sym)
-                      instance (apply real-ctor args)]
-                  [name instance])))
-            descr))
+  [descr :- InitializationMap
+   config-options :- {s/Any s/Any}]
+  (mapcat (fn [[name ctor]]
+            ;; Called for the side-effects
+            ;; This should have been taken care of below,
+            ;; in the call to require-schematic-namespaces!
+            ;; But better safe than sorry
+            (-> ctor namespace symbol require)
+              
+            (let [real-ctor (resolve ctor)
+                  ;; Note the way this couples the Component name
+                  ;; w/ the options.
+                  ;; I'm not sure that's a bad thing
+                  instance (real-ctor (name config-options))]
+              [name instance]))
+          descr))
 
-  (s/defn system-map :- SystemMap
-    [descr :- {s/Keyword s/Symbol}
-     config-options :- {s/Any s/Any}]
-    (let [inited (initialize descr config-options)]
-      (apply component/system-map inited)))
+(s/defn system-map! :- SystemMap
+  [descr :- InitializationMap
+   config-options :- {s/Any s/Any}]
+  (let [inited (initialize! descr config-options)]
+    (apply component/system-map inited)))
 
-  (s/defn dependencies :- SystemMap
-    [inited :- SystemMap
-     descr :- {s/Keyword s/Any}]
-    (comment (log/debug "Preparing to build dependency tree for\n"
-                        (common/pretty inited)
-                        "based on the dependency description\n"
-                        (common/pretty descr)))
-    (component/system-using inited descr)))
+(s/defn dependencies :- SystemMap
+  [inited :- SystemMap
+   descr :- {s/Keyword s/Any}]
+  (comment (log/debug "Preparing to build dependency tree for\n"
+                      (common/pretty inited)
+                      "based on the dependency description\n"
+                      (common/pretty descr)))
+  (component/system-using inited descr))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn ctor :- SystemMap
-  "Returns a system that's ready to start, based on config.
+(s/defn ctor :- SystemMap
+  "Returns a system that's ready to start, based on config
+files.
 
 Should mostly be pulling from EDN, which (realistically)
 should be pulling everything from environment variables.
 
-config-options are really meant to be command-line options,
-which means we shouldn't have any particular use for them
-in this scenario.
+command-line-args is really meant to be a seq of
+  command-line options,
+  which means we shouldn't have any particular use for them
+  in this scenario.
 
-They're intended to be in the form of key/value pairs that
-get expanded into the map."
-  [& config-options]
-  (comment (let [options (if (seq config-options)
-                           (first config-options)
-                           {})
-                 descr (common/load-resource config-file-name)
-                 pre-init (-> descr
-                              first
-                              (system-map options))]
-             (dependencies pre-init (second descr))))
-  (let [configuration (cfg/assemble-configuration {:prefix "frereth"
-                                                   :schemas [db/URL
-                                                             router/WebSocket
-                                                             router/Standard
-                                                             web/Server]
+  They're intended to be in the form of key/value pairs that
+  get expanded into the map according to some rules on which
+  I'm not yet clear.
+
+  According to the unit tests:
+  foo/bar=baz => {:foo {:bar \"baz\"}}
+  Merging {:foo {:bar \"baz\"}} with foo/gnip=gnop
+    => {:foo {:bar \"baz\", :gnip \"gnop\"}}
+
+extra-files: seq of absolute file paths to merge in. For
+  the sake of setting up configuration outside the CLASSPATH
+"
+  [command-line-args extra-files]
+  ;; TODO: Pull these out of the SystemMap description
+  (let [system-description (-> "frereth.system.edn" io/resource io/reader edn/read)
+        schemata (-> system-description :schemas translate-schematics!)
+        options (cfg/assemble-configuration {:prefix "frereth"
+                                             :schemas schemata
                                                    ;; seq of absolute file paths that will
                                                    ;; be loaded last.
                                                    ;; Typically for config files outside the classpath
                                                    :additional-files []
-                                                   :args config-options
+                                                   :args command-line-args
                                                    :profiles []})
-        system-map (component/system-map :database (db/ctor (:database configuration))
-                                         :web-socket-router (router/ctor (:web-socket configuration))
-                                         :http-router (router/ctor (:http-router configuration))
-                                         :web-server (web/ctor (:web-server configuration)))
-        dependency-map {:web-server [:http-router :web-socket-router]
-                        :http-router [:database]
-                        :web-socket-router [:database]}]
-    (component/system-using )))
+                  pre-init (-> system-description
+                               :initialization-map
+                               (system-map! options))]
+    (dependencies pre-init (:dependencies system-description))
+    (comment (let [configuration 
+                   system-map (component/system-map :database (db/ctor (:database configuration))
+                                                    :web-socket-router (router/ctor (:web-socket configuration))
+                                                    :http-router (router/ctor (:http-router configuration))
+                                                    :web-server (web/ctor (:web-server configuration)))
+                   dependency-map {:web-server [:http-router :web-socket-router]
+                                   :http-router [:database]
+                                   :web-socket-router [:database]}]))
+    (component/system-using dependencies)))
 

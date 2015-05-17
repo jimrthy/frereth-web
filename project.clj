@@ -49,13 +49,6 @@
                  [org.clojure/clojurescript "0.0-3211" :exclusions [org.clojure/tools.reader]]
                  [secretary "1.2.3"]
 
-                 ;;; Admin-Specific
-                 ;;; These really seem like they belong in their own profile.
-                 ;;; TODO: Figure out why that isn't working
-                 ;;; Then again, these simply do not belong in here.
-                 #_[datomic-schema "1.3.0"]
-                 #_[io.rkn/conformity "0.3.4" :exclusions [com.datomic/datomic-free]]
-                 
                  ;;; Generally Useful
                  [com.stuartsierra/component "0.2.3"]
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/tools.reader]]
@@ -108,7 +101,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main ^:skip-aot frereth-web.core
 
-  :plugins [[com.jakemccrary/lein-test-refresh "0.7.0"]
+  :plugins [
             [lein-cljsbuild "1.0.5" :exclusions [org.clojure/clojure]]
             [lein-figwheel "0.3.1" :exclusions [org.codehaus.plexus/plexus-utils
                                                 org.clojure/clojure]]]
@@ -118,12 +111,14 @@
                                    :lein-profiles [:dev]
                                    :env :dev}
                         :plugins [#_[lein-figwheel "0.3.1" :exclusions [org.clojure/clojurescript
-                                                                        org.codehaus.plexus/plexus-utils]]]
+                                                                        org.codehaus.plexus/plexus-utils]]
+                                  [com.jakemccrary/lein-test-refresh "0.9.0"]]
                         :resource-paths ["dev-resources"]
                         :source-paths ["dev"]}
              :figwheel {:dependencies [#_[figwheel "0.3.1"]]
                         :figwheel {:css-dirs ["resources/public/css"]
                                    :resource-paths ["target/js"]}}
+             ;; Q: Why isn't this working?
              :dev [:dev-base :figwheel]}
   :repl-options {:init-ns user
                  :timeout 120000

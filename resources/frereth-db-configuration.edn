@@ -1,5 +1,0 @@
-;; N.B. This doesn't belong here
-{:protocol :free
- :hostname db
- :port 4334
- :database frereth}
