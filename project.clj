@@ -24,6 +24,8 @@
   :dependencies [;; Probably only useful server-side
                  [com.taoensso/timbre "3.4.0" :exclusions [com.taoensso/encore
                                                            org.clojure/tools.reader]]
+                 [io.aviso/config "0.1.1" :exclusions [org.clojure/clojure
+                                                       prismatic/schema]]
                  [org.clojure/clojure "1.7.0-beta3"]
                  [org.immutant/immutant "2.0.1" :exclusions [org.clojure/java.classpath
                                                              org.clojure/tools.reader
