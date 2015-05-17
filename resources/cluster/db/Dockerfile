@@ -1,16 +1,14 @@
 # Set up datomic-free as a docker
 
 # This is based pretty heavily on tauho/docker-datomic-free
-# Which is Copyright 2013, Cognitect Inc, All Rights Reserved.
-# But they put it on github, with invitations to fork,
-# make changes, and submit pull requests.
-# They also included a copy of the Datomic Free License.
+# That includes the copyright and license for Datomic Free
+# (which means I need to also).
 
-# I can't imagine they'd object to this particular use
-# (why else would they have supplied what they did?)
-
-# 2015MAY16:
-# I've contacted timgluz@gmail.com to verify that.
+# From Timo Sulg, aka tauho:
+# Any Dockerfile and scripts in that repository are licensed
+# as WTFpl (https://tldrlegal.com/license/do-wtf-you-want-to-public-license-v2-(wtfpl-2.0)
+# - you can use and modify everything in the repo - Cognitect licences applies [sic] only
+# to Datomic's images.
 
 FROM dockerfile/java
 
