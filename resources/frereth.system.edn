@@ -5,9 +5,10 @@
 {;; Symbols that map to Prismatic schema definitions
  ;; that will be used to validate the rest of the configuration
  :schemas {frereth-web.server ConnectionDescription
-           frereth-web.router [WebSocketDescription
+           frereth-web.routes [WebSocketDescription
                                router/StandardDescription]
            frereth-web.core ServerDescription}
+ ;; TODO: Start here!
  :initialization-map {:server frereth-server.comms/ctor
                       :http-router frereth-web.router/ctor
                       ;; TODO: Add the web socket handler
