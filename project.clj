@@ -36,7 +36,7 @@
                                                              org.hornetq/hornetq-server
                                                              #_org.jboss.logging/jboss-logging
                                                              org.jgroups/jgroups
-                                                             org.slf4j/slf4j-api]]
+                                                             #_org.slf4j/slf4j-api]]
                  [ring/ring-anti-forgery "1.0.0"]
                  [ring/ring-defaults "0.1.5" :exclusions [org.clojure/tools.reader]]
                  [ring/ring-headers "0.1.3"]

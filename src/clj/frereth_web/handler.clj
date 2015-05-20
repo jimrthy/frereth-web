@@ -1,25 +1,24 @@
 (ns frereth-web.handler
-  (:require [com.stuartsierra.component :as cpt]
+  "This is where the web server lives"
+  (:require [com.stuartsierra.component :as component]
             [frereth-web.routes :as routes]
             [immutant.web :as web]
             [ribol.core :refer (manage raise)]
             [schema.core :as s]
             [taoensso.timbre :as log])
-  (:import [frereth-web.routes Routes]))
+  (:import [frereth_web.routes Routes]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-(def ServerDescription {router Routes})
+(def ServerDescription {:router Routes})
 
 (s/defrecord Server [router :- Routes]
-    comporent/Lifecycle
+    component/Lifecycle
   (start
    [this]
-   (let [stop-signaller (fn []
-                          (raise {:nowhere-to-register-this}))]
-     (let [base-server-options (web/run router)]
-       (into this {:killer server-options}))))
+   (let [server-options (web/run router)]
+     (into this {:killer server-options})))
 
   (stop
    [this]
@@ -32,6 +31,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn ctor
+(s/defn ^:always-validate ctor :- Server
   [options :- ServerDescription]
   (map->Server ServerDescription))

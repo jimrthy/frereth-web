@@ -11,17 +11,9 @@
   [& args]
   ;; This is going to fail right off the bat:
   ;; I have to specify a system descriptor
-  (let [initial (sys/ctor "frereth-web.prod.system.edn")
-        active (component/start initial)]
-    (try
-      ;; It looks like just starting the web server should be enough
-      ;; for this part
-      (raise {:not-implemented "Must return"
-              :problem "Otherwise container never finishes initializing"
-              :question "So how's this supposed to work?"})
-      ;; Just wait for the promise to be delivered
-      @(:done active)
-      (finally
-        ;; TODO: Need to tear down the actual servlet
-        ;; There's more involved here than meets the eye
-        (component/stop active)))))
+  (let [initial (sys/ctor "frereth-web.prod.system.edn")]
+    ;;; This ties is w/ a cluster-wide singleton daemon to stop on unload.
+    ;;; This approach really only works when the cluster consists of just one
+    ;;; server.
+    ;;; TODO: Each node in the cluster really needs its own singleton-daemon name
+    (component/start initial)))
