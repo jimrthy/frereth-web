@@ -108,25 +108,26 @@ N.B. this returns key-value pairs that are suitable for passing to dependencies
 as the last argument of apply"
   [descr :- InitializationMap
    config-options :- {s/Any s/Any}]
-  (mapcat (fn [[name ctor]]
-            ;; Called for the side-effects
-            ;; This should have been taken care of below,
-            ;; in the call to require-schematic-namespaces!
-            ;; But better safe than sorry
-            (-> ctor namespace symbol require)
-              
-            (let [real-ctor (resolve ctor)
-                  ;; Note the way this couples the Component name
-                  ;; w/ the options.
-                  ;; I'm not sure that's a bad thing
-                  instance (real-ctor (name config-options))]
-              [name instance]))
-          descr))
+  (map (fn [[name ctor]]
+         ;; Called for the side-effects
+         ;; This should have been taken care of below,
+         ;; in the call to require-schematic-namespaces!
+         ;; But better safe than sorry
+         (-> ctor namespace symbol require)
+
+         (let [real-ctor (resolve ctor)
+               ;; Note the way this couples the Component name
+               ;; w/ the options.
+               ;; I'm not sure that's a bad thing
+               instance (real-ctor (name config-options))]
+           [name instance]))
+       descr))
 
 (s/defn system-map! :- SystemMap
   [descr :- InitializationMap
    config-options :- {s/Any s/Any}]
-  (let [inited (initialize! descr config-options)]
+  (let [inited-pairs (initialize! descr config-options)
+        inited (concat inited-pairs)]
     (apply component/system-map inited)))
 
 (s/defn dependencies :- SystemMap
@@ -227,9 +228,6 @@ extra-files: seq of absolute file paths to merge in. For
                                       pushback-reader
                                       edn/read)
                options (combine-options command-line-args system-description)
-               init-map (:initialization-map system-description)]
-           (initialize! init-map options))
-
-         )
+               init-map (:initialization-map system-description)]))
 
 
