@@ -10,10 +10,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-(def ConnectionDescription {})
+(def ConnectionDescription {:address s/Str
+                            :protocol s/Str
+                            :port s/Int})
+
+(def ConnectionCtorDescription {:frereth-server ConnectionDescription})
 
 (s/defrecord Connection [complete :- completed/FinishedHandler
-                         url :- ConnectionDescription]
+                         address :- s/Str
+                         protocol :- s/Str
+                         port :- s/Int]
   component/Lifecycle
   (start
    [this]
@@ -22,10 +28,15 @@
    [this]
    (raise :not-implemented)))
 
+(def UnstartedConnection (into ConnectionDescription
+                               ;; As it stands, this will be nil until Components
+                               ;; has its chance to work its magic
+                               {:complete s/Any}))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(s/defn ^:always-validate ctor :- Connection
-  [opts :- {:url ConnectionDescription}]
+(s/defn ^:always-validate ctor :- UnstartedConnection
+  [opts :- ConnectionDescription]
   (map->Connection opts))
 

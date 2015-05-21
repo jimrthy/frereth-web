@@ -12,7 +12,9 @@ just because I find myself copy/pasting it around a lot.
             [ribol.core :refer (raise)]
             [schema.core :as s]
             [taoensso.timbre :as log])
-  (:import [com.stuartsierra.component SystemMap]))
+  (:import [clojure.lang ExceptionInfo]
+           [com.stuartsierra.component SystemMap]
+           [java.io PushbackReader]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -53,7 +55,13 @@ I'm just not sure that'll work in non-sequences
   [namespace :- s/Symbol
    var-name :- s/Symbol]
   (let [sym (symbol (str namespace "/" var-name))]
-    (eval sym)))
+    (try
+      (eval sym)
+      (catch RuntimeException ex
+        ;; Logger isn't initialized yet
+        (print "Loading" var-name "from" namespace "failed")
+        (raise {:problem var-name
+                :reason ex})))))
 
 (s/defn require-schematic-namespaces!
   "Makes sure all the namespaces where the schemata
@@ -87,6 +95,11 @@ N.B. Doesn't even think about trying to be java friendly. No defrecord!"
   (require-schematic-namespaces! d)
   (extract-schema d))
 
+;;; This actually returns a sequence of the pairs that form a Component.
+;;; So something like (concat [ComponentInstanceName ComponentInstance] ...)
+;;; Q: How can I specify that?
+;;; Q: Would it be better to use map instead of mapcat to build this
+;;; sequence, then concat it before I actually use it?
 (s/defn ^:always-validate initialize! :- [Component]
   "require the individual namespaces and call each Component's constructor,
 returning a seq of name/instance pairs that probably should have been a map
@@ -131,15 +144,21 @@ as the last argument of apply"
 ;; TODO: What's the schema?
 (defn combine-options
   [command-line-args system-description]
-  (let [schemata (-> system-description :schemas translate-schematics!)]
+  (let [ctor-schemata (-> system-description :schemas translate-schematics!)]
     (cfg/assemble-configuration {:prefix "frereth"
-                                 :schemas schemata
+                                 :schemas ctor-schemata
                                  ;; seq of absolute file paths that will
                                  ;; be loaded last.
                                  ;; Typically for config files outside the classpath
                                  :additional-files []
                                  :args command-line-args
                                  :profiles []})))
+
+(s/defn pushback-reader :- PushbackReader
+  "Probably belongs under something like utils.
+Yes, it does seem pretty stupid"
+  [reader]
+  (PushbackReader. reader))
 
 (s/defn ctor :- SystemMap
   "Returns a system that's ready to start, based on config
@@ -168,11 +187,49 @@ extra-files: seq of absolute file paths to merge in. For
   [command-line-args
    system-description-file-name :- s/Str]
   ;; TODO: Pull these out of the SystemMap description
-  (let [system-description (-> system-description-file-name io/resource io/reader edn/read)
+  (let [system-description (-> system-description-file-name
+                               io/resource
+                               io/reader
+                               ;; It seems fucking ridiculous that it's so
+                               ;; complicated to build this stupid thing
+                               pushback-reader
+                               edn/read)
         options (combine-options command-line-args system-description)
         pre-init (-> system-description
                      :initialization-map
                      (system-map! options))]
     (dependencies pre-init (:dependencies system-description))
     (component/system-using dependencies)))
+
+;; TODO: This needs to be a unit test
+(comment
+  (let [command-line-args []
+        system-description-file-name "frereth.system.edn"
+        system-description (-> system-description-file-name
+                               io/resource
+                               io/reader
+                               ;; It seems fucking ridiculous that it's so
+                               ;; complicated to build this stupid thing
+                               pushback-reader
+                               edn/read)
+        options (combine-options command-line-args system-description)
+        init-map (:initialization-map system-description)]
+    (system-map! init-map options)))
+
+;; TODO: Also needs to be a unit test
+(comment (let [command-line-args []
+               system-description-file-name "frereth.system.edn"
+               system-description (-> system-description-file-name
+                                      io/resource
+                                      io/reader
+                                      ;; It seems fucking ridiculous that it's so
+                                      ;; complicated to build this stupid thing
+                                      pushback-reader
+                                      edn/read)
+               options (combine-options command-line-args system-description)
+               init-map (:initialization-map system-description)]
+           (initialize! init-map options))
+
+         )
+
 

@@ -13,6 +13,8 @@
 
 (def FinishedHandler {:done FutureClass})
 
+(def FinishedCtorHandler {:complete {}})
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 

@@ -11,13 +11,18 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-(def ServerDescription {:router Routes})
+(def ServerDescription
+  "What the Server's ctor needs"
+  {})
+(def ServerCtorDescription
+  "What the system options piece looks like"
+  {:web-server ServerDescription})
 
-(s/defrecord Server [router :- Routes]
+(s/defrecord Server [http-router :- Routes]
     component/Lifecycle
   (start
    [this]
-   (let [server-options (web/run router)]
+   (let [server-options (web/run http-router)]
      (into this {:killer server-options})))
 
   (stop
@@ -25,12 +30,15 @@
    (let [killer (:killer this)]
      (web/stop killer))))
 
+(def UnstartedServer (assoc ServerDescription
+                            :http-router s/Any))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(s/defn ^:always-validate ctor :- Server
+(s/defn ^:always-validate ctor :- UnstartedServer
   [options :- ServerDescription]
-  (map->Server ServerDescription))
+  (map->Server options))

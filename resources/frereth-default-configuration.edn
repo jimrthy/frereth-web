@@ -1,2 +1,7 @@
 ;;;; Note that this profile is always loaded first
-{}
+{:complete {}
+ :frereth-server {:address "localhost"
+                  :protocol "tcp"
+                  :port 9989}
+ :http-router {}
+ :web-server {}}
