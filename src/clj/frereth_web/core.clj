@@ -1,6 +1,7 @@
 (ns frereth-web.core
   (:require [com.stuartsierra.component :as component]
             [frereth-web.system :as sys]
+            [immutant.daemons :as daemons]
             [ribol.core :refer (raise)])
   ;; Q: Do I want to do this?
   ;; It just seems to cause trouble
@@ -9,11 +10,13 @@
 (defn -main
   "This is where immutant will kick off"
   [& args]
-  ;; This is going to fail right off the bat:
-  ;; I have to specify a system descriptor
-  (let [initial (sys/ctor "frereth-web.prod.system.edn")]
-    ;;; This ties is w/ a cluster-wide singleton daemon to stop on unload.
-    ;;; This approach really only works when the cluster consists of just one
-    ;;; server.
-    ;;; TODO: Each node in the cluster really needs its own singleton-daemon name
-    (component/start initial)))
+  (let [initial (sys/ctor args "frereth.system.edn")
+        system (component/start initial)]
+    ;; TODO: The name here really needs to come from system's
+    ;; "combine-options".
+    ;; I'm just having a tough time figuring out how to make that
+    ;; play nicely with the REPL
+    (daemons/singleton-daemon "FIXME: Needs to come from env"
+                              (constantly nil)
+                              (fn []
+                                (component/stop system)))))

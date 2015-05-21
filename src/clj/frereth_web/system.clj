@@ -128,6 +128,19 @@ as the last argument of apply"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
+;; TODO: What's the schema?
+(defn combine-options
+  [command-line-args system-description]
+  (let [schemata (-> system-description :schemas translate-schematics!)]
+    (cfg/assemble-configuration {:prefix "frereth"
+                                 :schemas schemata
+                                 ;; seq of absolute file paths that will
+                                 ;; be loaded last.
+                                 ;; Typically for config files outside the classpath
+                                 :additional-files []
+                                 :args command-line-args
+                                 :profiles []})))
+
 (s/defn ctor :- SystemMap
   "Returns a system that's ready to start, based on config
 files.
@@ -152,29 +165,14 @@ command-line-args is really meant to be a seq of
 extra-files: seq of absolute file paths to merge in. For
   the sake of setting up configuration outside the CLASSPATH
 "
-  [command-line-args extra-files]
+  [command-line-args
+   system-description-file-name :- s/Str]
   ;; TODO: Pull these out of the SystemMap description
-  (let [system-description (-> "frereth.system.edn" io/resource io/reader edn/read)
-        schemata (-> system-description :schemas translate-schematics!)
-        options (cfg/assemble-configuration {:prefix "frereth"
-                                             :schemas schemata
-                                                   ;; seq of absolute file paths that will
-                                                   ;; be loaded last.
-                                                   ;; Typically for config files outside the classpath
-                                                   :additional-files []
-                                                   :args command-line-args
-                                                   :profiles []})
-                  pre-init (-> system-description
-                               :initialization-map
-                               (system-map! options))]
+  (let [system-description (-> system-description-file-name io/resource io/reader edn/read)
+        options (combine-options command-line-args system-description)
+        pre-init (-> system-description
+                     :initialization-map
+                     (system-map! options))]
     (dependencies pre-init (:dependencies system-description))
-    (comment (let [configuration 
-                   system-map (component/system-map :database (db/ctor (:database configuration))
-                                                    :web-socket-router (router/ctor (:web-socket configuration))
-                                                    :http-router (router/ctor (:http-router configuration))
-                                                    :web-server (web/ctor (:web-server configuration)))
-                   dependency-map {:web-server [:http-router :web-socket-router]
-                                   :http-router [:database]
-                                   :web-socket-router [:database]}]))
     (component/system-using dependencies)))
 

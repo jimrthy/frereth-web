@@ -44,9 +44,11 @@
   []
   (set! *print-length* 50)
   ;; Q: Will there ever be any valid reason to use a different
-  ;; system descriptor for dev that prod?
+  ;; system descriptor for dev than prod?
+  ;; Well, besides for the things that will obviously change, like
+  ;; URLs and passwords
   (alter-var-root #'system
-                  (constantly (system/ctor #_"frereth-web.dev.system.edn" "frereth-web.prod.system.edn"))))
+                  (constantly (system/ctor [] "frereth.system.edn"))))
 
 (defn start
   "Starts the current development system."
