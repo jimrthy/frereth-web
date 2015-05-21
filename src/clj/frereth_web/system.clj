@@ -123,20 +123,27 @@ as the last argument of apply"
            [name instance]))
        descr))
 
-(s/defn system-map! :- SystemMap
+(s/defn ^:always-validate system-map! :- SystemMap
   [descr :- InitializationMap
    config-options :- {s/Any s/Any}]
   (let [inited-pairs (initialize! descr config-options)
         inited (concat inited-pairs)]
     (apply component/system-map inited)))
 
-(s/defn dependencies :- SystemMap
+(s/defn ^:always-validate dependencies :- SystemMap
   [inited :- SystemMap
    descr :- {s/Keyword s/Any}]
-  (comment (log/debug "Preparing to build dependency tree for\n"
-                      (common/pretty inited)
-                      "based on the dependency description\n"
-                      (common/pretty descr)))
+  (comment)
+  (let [ks (keys inited)]
+    (log/debug "Preparing to build dependency tree for\n"
+               (common/pretty inited)
+               "with" (count ks) "keys\n"
+               (common/pretty ks)
+               "\nbased on the dependency description\n"
+               (common/pretty descr)))
+  ;;; This is going to fail. inited is hosed.
+  ;;; TODO: Start here
+  
   (component/system-using inited descr))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -200,7 +207,7 @@ extra-files: seq of absolute file paths to merge in. For
                      :initialization-map
                      (system-map! options))]
     (dependencies pre-init (:dependencies system-description))
-    (component/system-using dependencies)))
+    #_(component/system-using dependencies)))
 
 ;; TODO: This needs to be a unit test
 (comment
