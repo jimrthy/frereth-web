@@ -17,6 +17,6 @@
                       :http-router frereth-web.routes/ctor
                       ;; TODO: Add the web socket handler
                       :web-server frereth-web.handler/ctor}
- :dependencies {:http-router [:server]
+ :dependencies {:http-router [:frereth-server]
                 :web-server [:http-router]
                 :frereth-server [:complete]}}

@@ -22,7 +22,7 @@
     component/Lifecycle
   (start
    [this]
-   (let [server-options (web/run http-router)]
+   (let [server-options (web/run (:http-router http-router))]
      (into this {:killer server-options})))
 
   (stop

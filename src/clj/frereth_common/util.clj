@@ -8,7 +8,8 @@ Slightly enhanced."
             [puget.printer :as puget]
             [ribol.core :refer [raise]]
             [schema.core :as s])
-  (:import [java.lang.reflect Modifier]
+  (:import [java.io PushbackReader]
+           [java.lang.reflect Modifier]
            [java.util Collection Date UUID]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -138,9 +139,20 @@ Slightly enhanced."
       slurp
       edn/read-string))
 
+(defn pick-home
+  "Returns the current user's home directory"
+  []
+  (System/getProperty "user.home"))
+
 (defn pretty
   [& os]
   (with-out-str (apply puget/cprint os)))
+
+(s/defn pushback-reader :- PushbackReader
+  "Probably belongs under something like utils.
+Yes, it does seem pretty stupid"
+  [reader]
+  (PushbackReader. reader))
 
 (s/defn random-uuid :- UUID
   "Because remembering the java namespace is annoying"

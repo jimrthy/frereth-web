@@ -93,7 +93,7 @@ Can't just call this go: that conflicts with a macro from core.async."
   ;; But I don't need it yet.
   (comment (raise :currently-broken))
   (try
-    (refresh :after 'dev/go-go)
+    (refresh :after 'dev/go)
     (catch clojure.lang.ExceptionInfo ex
       (pprint ex)
       (println "Refresh failed"))))

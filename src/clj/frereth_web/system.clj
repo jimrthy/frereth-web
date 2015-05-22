@@ -13,8 +13,7 @@ just because I find myself copy/pasting it around a lot.
             [schema.core :as s]
             [taoensso.timbre :as log])
   (:import [clojure.lang ExceptionInfo]
-           [com.stuartsierra.component SystemMap]
-           [java.io PushbackReader]))
+           [com.stuartsierra.component SystemMap]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -127,7 +126,7 @@ as the last argument of apply"
   [descr :- InitializationMap
    config-options :- {s/Any s/Any}]
   (let [inited-pairs (initialize! descr config-options)
-        inited (concat inited-pairs)]
+        inited (apply concat inited-pairs)]
     (apply component/system-map inited)))
 
 (s/defn ^:always-validate dependencies :- SystemMap
@@ -135,16 +134,23 @@ as the last argument of apply"
    descr :- {s/Keyword s/Any}]
   (comment)
   (let [ks (keys inited)]
-    (log/debug "Preparing to build dependency tree for\n"
-               (common/pretty inited)
-               "with" (count ks) "keys\n"
-               (common/pretty ks)
-               "\nbased on the dependency description\n"
-               (common/pretty descr)))
-  ;;; This is going to fail. inited is hosed.
-  ;;; TODO: Start here
-  
+    (comment (log/debug "Preparing to build dependency tree for\n"
+                        (common/pretty inited)
+                        "with" (count ks) "keys\n"
+                        (common/pretty ks)
+                        "\nbased on the dependency description\n"
+                        (common/pretty descr))))
   (component/system-using inited descr))
+
+(defn configure-logging!
+  "Doesn't belong here"
+  [log-file-name]
+  (log/set-config!
+   ;; TODO: This needs to rotate
+   [:appenders :spit :enabled?] true)
+  (log/set-config! [:shared-appender-config :spit-filename]
+                   (str (common/pick-home) "/" log-file-name ".log"))
+  (log/info "Logging configured"))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -161,12 +167,6 @@ as the last argument of apply"
                                  :additional-files []
                                  :args command-line-args
                                  :profiles []})))
-
-(s/defn pushback-reader :- PushbackReader
-  "Probably belongs under something like utils.
-Yes, it does seem pretty stupid"
-  [reader]
-  (PushbackReader. reader))
 
 (s/defn ctor :- SystemMap
   "Returns a system that's ready to start, based on config
@@ -194,13 +194,16 @@ extra-files: seq of absolute file paths to merge in. For
 "
   [command-line-args
    system-description-file-name :- s/Str]
-  ;; TODO: Pull these out of the SystemMap description
+
+  ;; TODO: This should really happen in its own component
+  
+
   (let [system-description (-> system-description-file-name
                                io/resource
                                io/reader
                                ;; It seems fucking ridiculous that it's so
                                ;; complicated to build this stupid thing
-                               pushback-reader
+                               common/pushback-reader
                                edn/read)
         options (combine-options command-line-args system-description)
         pre-init (-> system-description
@@ -218,11 +221,15 @@ extra-files: seq of absolute file paths to merge in. For
                                io/reader
                                ;; It seems fucking ridiculous that it's so
                                ;; complicated to build this stupid thing
-                               pushback-reader
+                               common/pushback-reader
                                edn/read)
         options (combine-options command-line-args system-description)
-        init-map (:initialization-map system-description)]
-    (system-map! init-map options)))
+        descr (:initialization-map system-description)
+        inited-pairs (initialize! descr options)
+        inited (apply concat inited-pairs)]
+    (let [sys-map (apply component/system-map inited)]
+      inited
+      (keys sys-map))))
 
 ;; TODO: Also needs to be a unit test
 (comment (let [command-line-args []
@@ -232,9 +239,10 @@ extra-files: seq of absolute file paths to merge in. For
                                       io/reader
                                       ;; It seems fucking ridiculous that it's so
                                       ;; complicated to build this stupid thing
-                                      pushback-reader
+                                      common/pushback-reader
                                       edn/read)
                options (combine-options command-line-args system-description)
-               init-map (:initialization-map system-description)]))
+               init-map (:initialization-map system-description)]
+           init-map))
 
 

@@ -5,7 +5,8 @@
   (:require [com.stuartsierra.component :as component]
             [frereth-web.completion :as completed]
             [ribol.core :refer (raise)]
-            [schema.core :as s]))
+            [schema.core :as s]
+            [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -23,10 +24,14 @@
   component/Lifecycle
   (start
    [this]
-   (raise :not-implemented))
+   (log/error "TODO: Create a...actually, we're probably going to need one socket per connection")
+   (comment (raise :not-implemented))
+   this)
   (stop
    [this]
-   (raise :not-implemented)))
+   (log/error "TODO: Close all the sockets. Should probably warn the other side")
+   (comment (raise :not-implemented))
+   this))
 
 (def UnstartedConnection (into ConnectionDescription
                                ;; As it stands, this will be nil until Components
