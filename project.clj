@@ -4,10 +4,10 @@
   :cljsbuild {
     :builds [{:id "dev"
               :source-paths ["src/cljs" "dev_src/cljs"]
-              :compiler {:output-to "resources/public/js/compiled/fig.js"
+              :compiler {:output-to "resources/public/js/compiled/frereth.js"
                          :output-dir "resources/public/js/compiled/out"
                          :optimizations :none
-                         :main fig.dev
+                         :main frereth.dev
                          :asset-path "js/compiled/out"
                          :source-map true
                          :source-map-timestamp true
@@ -16,17 +16,18 @@
              ;; minification
              {:id "min"
               :source-paths ["src"]
-              :compiler {:output-to "resources/public/js/compiled/fig.js"
+              :compiler {:output-to "resources/public/js/compiled/frereth.js"
                          :main fig.core                         
                          :optimizations :advanced
                          :pretty-print false}}]}
 
   :dependencies [;; Probably only useful server-side
+                 [com.stuartsierra/component "0.2.3"]
                  [com.taoensso/timbre "3.4.0" :exclusions [com.taoensso/encore
                                                            org.clojure/tools.reader]]
                  [io.aviso/config "0.1.1" :exclusions [org.clojure/clojure
                                                        prismatic/schema]]
-                 [org.clojure/clojure "1.7.0-beta3"]
+                 [org.clojure/clojure "1.7.0-RC1"]
                  [org.immutant/immutant "2.0.1" :exclusions [org.clojure/java.classpath
                                                              org.clojure/tools.reader
                                                              org.hornetq/hornetq-commons
@@ -37,6 +38,7 @@
                                                              #_org.jboss.logging/jboss-logging
                                                              org.jgroups/jgroups
                                                              #_org.slf4j/slf4j-api]]
+                 [prismatic/fnhouse "0.1.2"]
                  [ring/ring-anti-forgery "1.0.0"]
                  [ring/ring-defaults "0.1.5" :exclusions [org.clojure/tools.reader]]
                  [ring/ring-headers "0.1.3"]
@@ -50,7 +52,6 @@
                  [secretary "1.2.3"]
 
                  ;;; Generally Useful
-                 [com.stuartsierra/component "0.2.3"]
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
                  [figwheel "0.3.1"]
@@ -101,7 +102,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main ^:skip-aot frereth-web.core
 
-  :plugins [
+  :plugins [[com.jakemccrary/lein-test-refresh "0.7.0"]
             [lein-cljsbuild "1.0.5" :exclusions [org.clojure/clojure]]
             [lein-figwheel "0.3.1" :exclusions [org.codehaus.plexus/plexus-utils
                                                 org.clojure/clojure]]]
