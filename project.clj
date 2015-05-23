@@ -17,7 +17,7 @@
              {:id "min"
               :source-paths ["src"]
               :compiler {:output-to "resources/public/js/compiled/frereth.js"
-                         :main fig.core                         
+                         :main frereth.core                         
                          :optimizations :advanced
                          :pretty-print false}}]}
 
@@ -106,7 +106,7 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main ^:skip-aot frereth-web.core
 
-  :plugins [[com.jakemccrary/lein-test-refresh "0.7.0"]
+  :plugins [[com.jakemccrary/lein-test-refresh "0.9.0"]
             [lein-cljsbuild "1.0.5" :exclusions [org.clojure/clojure]]
             [lein-figwheel "0.3.3" :exclusions [org.codehaus.plexus/plexus-utils
                                                 org.clojure/clojure]]]
@@ -117,7 +117,7 @@
                                    :env :dev}
                         :plugins [#_[lein-figwheel "0.3.3" :exclusions [org.clojure/clojurescript
                                                                         org.codehaus.plexus/plexus-utils]]
-                                  [com.jakemccrary/lein-test-refresh "0.9.0"]]
+                                  #_[com.jakemccrary/lein-test-refresh "0.9.0"]]
                         :resource-paths ["dev-resources"]
                         :source-paths ["dev"]}
              :figwheel {:dependencies [#_[figwheel "0.3.3"]]

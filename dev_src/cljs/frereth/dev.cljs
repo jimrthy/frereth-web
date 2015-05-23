@@ -1,4 +1,4 @@
-(ns fig.dev
+(ns frereth.dev
     (:require
      [frereth.core]
      [figwheel.client :as fw]))
