@@ -37,32 +37,36 @@
                                                              org.hornetq/hornetq-server
                                                              #_org.jboss.logging/jboss-logging
                                                              org.jgroups/jgroups
-                                                             #_org.slf4j/slf4j-api]]
+                                                             org.slf4j/slf4j-api]]
+                 ;; immutant is schizophrenic about which version it uses
+                 [org.slf4j/slf4j-api "1.7.6"]
                  [prismatic/fnhouse "0.1.2"]
+                 [ring/ring-core "1.4.0-RC1"]
                  [ring/ring-anti-forgery "1.0.0"]
                  [ring/ring-defaults "0.1.5" :exclusions [org.clojure/tools.reader]]
                  [ring/ring-headers "0.1.3"]
 
                  ;;; Client-Specific...more or less
                  ;; I think I want to exclude this one's org.clojure/tools.reader
-                 ;; TODO: This is up to 0.0-3269.
+                 ;; TODO: This is up to 0.0-3291.
                  ;; But figwheel's documented to work with this version.
                  ;; So start here.
                  [org.clojure/clojurescript "0.0-3211" :exclusions [org.clojure/tools.reader]]
+                 [org.omcljs/om "0.8.8"]
                  [secretary "1.2.3"]
 
                  ;;; Generally Useful
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
-                 [figwheel "0.3.1"]
+                 [figwheel "0.3.3"]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
-                 [figwheel-sidecar "0.3.1"]
+                 [figwheel-sidecar "0.3.3"]
                  [mvxcvi/puget "0.8.1"]
                  [im.chit/ribol "0.4.0"]
                  [org.clojure/core.async "0.1.346.0-17112a-alpha" :exclusions [org.clojure/clojure]]
                  [org.clojure/core.match "0.2.2"]
                  [org.clojure/tools.reader "0.9.2"]
-                 [prismatic/plumbing "0.4.3"]]
+                 [prismatic/plumbing "0.4.4"]]
   :description "Another waffle in my torment about making this web-based"
 
   :figwheel {
@@ -104,19 +108,19 @@
 
   :plugins [[com.jakemccrary/lein-test-refresh "0.7.0"]
             [lein-cljsbuild "1.0.5" :exclusions [org.clojure/clojure]]
-            [lein-figwheel "0.3.1" :exclusions [org.codehaus.plexus/plexus-utils
+            [lein-figwheel "0.3.3" :exclusions [org.codehaus.plexus/plexus-utils
                                                 org.clojure/clojure]]]
 
   :profiles {:dev-base {:immutant {:context-path "/frereth"
                                    :nrepl-port 4242
                                    :lein-profiles [:dev]
                                    :env :dev}
-                        :plugins [#_[lein-figwheel "0.3.1" :exclusions [org.clojure/clojurescript
+                        :plugins [#_[lein-figwheel "0.3.3" :exclusions [org.clojure/clojurescript
                                                                         org.codehaus.plexus/plexus-utils]]
                                   [com.jakemccrary/lein-test-refresh "0.9.0"]]
                         :resource-paths ["dev-resources"]
                         :source-paths ["dev"]}
-             :figwheel {:dependencies [#_[figwheel "0.3.1"]]
+             :figwheel {:dependencies [#_[figwheel "0.3.3"]]
                         :figwheel {:css-dirs ["resources/public/css"]
                                    :resource-paths ["target/js"]}}
              ;; Q: Why isn't this working?
