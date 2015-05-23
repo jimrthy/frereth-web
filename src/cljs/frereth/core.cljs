@@ -1,6 +1,6 @@
 (ns ^:figwheel-always frereth.core
     "TODO: Do something interesting here"
-    (:require))
+    (:require [schema.core :as s]))
 
 (enable-console-print!)
 
@@ -9,7 +9,6 @@
 ;; define your app data so that it doesn't get over-written on reload
 
 (defonce app-state (atom {:text "Hello world!"}))
-
 
 (s/defn reflect :- {s/Keyword s/Any}
   "TODO: This doesn't belong here. But it's probably a better
