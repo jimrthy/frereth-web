@@ -6,7 +6,7 @@
             [ribol.core :refer (manage raise)]
             [schema.core :as s]
             [taoensso.timbre :as log])
-  (:import [frereth_web.routes Routes]))
+  (:import [frereth_web.routes HttpRoutes]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -18,7 +18,7 @@
   "What the system options piece looks like"
   {:web-server ServerDescription})
 
-(s/defrecord Server [http-router :- Routes]
+(s/defrecord Server [http-router :- HttpRoutes]
     component/Lifecycle
   (start
    [this]
