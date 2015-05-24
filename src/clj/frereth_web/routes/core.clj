@@ -1,4 +1,4 @@
-(ns frereth-web.routes
+(ns frereth-web.routes.core
   "Why is mapping HTTP end-points to handlers so contentious?"
   (:require [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
