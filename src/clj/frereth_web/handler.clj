@@ -1,7 +1,7 @@
 (ns frereth-web.handler
   "This is where the web server lives"
   (:require [com.stuartsierra.component :as component]
-            [frereth-web.routes :as routes]
+            [frereth-web.routes.core :as routes]
             [immutant.web :as web]
             [ribol.core :refer (manage raise)]
             [schema.core :as s]
