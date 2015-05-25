@@ -45,6 +45,7 @@
                  [ring/ring-anti-forgery "1.0.0"]
                  [ring/ring-defaults "0.1.5" :exclusions [org.clojure/tools.reader]]
                  [ring/ring-headers "0.1.3"]
+                 [ring-middleware-format "0.5.0"]
 
                  ;;; Client-Specific...more or less
                  ;; I think I want to exclude this one's org.clojure/tools.reader

@@ -6,7 +6,7 @@
             [ribol.core :refer (manage raise)]
             [schema.core :as s]
             [taoensso.timbre :as log])
-  (:import [frereth_web.routes HttpRoutes]))
+  (:import [frereth_web.routes.core HttpRoutes]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema

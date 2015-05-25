@@ -6,7 +6,10 @@
             [clojure.repl :refer :all]
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer (refresh refresh-all)]
+            [clojurescript-build.auto :as auto]
             [com.stuartsierra.component :as component]
+            [figwheel-sidecar.auto-builder :as fig-auto]
+            [figwheel-sidecar.core :as fig]
             [figwheel-sidecar.repl-api :as repl-api]
             [frereth-web.system :as system]
             [ribol.core :refer (raise)]
@@ -114,3 +117,20 @@ There's an emacs plugin for running both @ same time
 TODO: switch to it"
   []
   (repl-api/cljs-repl))
+
+(comment
+  ;; This looks like it works at first, but cider can't connect
+  (defn start-figwheel
+  "Use figwheel from a Clojure REPL
+  It's a work in progress"
+  []
+  (let [config {:builds [{:id "example"
+                          :output-to "resources/public/checkbuild.js"
+                          :output-dir "resources/public/out"
+                          :optimizations :none}]
+                :figwheel-server (fig/start-server {:css-dirs ["resources/public/css"]})}
+        builder (fig-auto/autobuild* config)]
+    (defn stop-figwheel
+      []
+      (auto/stop-autobuild! builder)))))
+

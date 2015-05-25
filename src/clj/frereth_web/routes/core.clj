@@ -11,6 +11,7 @@
             ;; Esp. anti-forgery, defaults, and headers.
             ;; TODO: Make use of those
             [ring.middleware.content-type :refer (wrap-content-type)]
+            [ring.middleware.format :refer (wrap-restful-format)]
             ;; TODO: Look into wrap-multipart-params middleware.
             ;; Uploading files is definitely one of the major required
             ;; features.
@@ -91,7 +92,7 @@
 (defn return-index
   "Because there are a ton of different ways to try to access the root of a web app"
   []
-  (let [url (io/resource "public/index.html")]
+  (if-let [url (io/resource "public/index.html")]
     ;; TODO: Return the stream rather than loading everything into memory here.
     ;; Then again, it isn't like "everything" is all that much.
     ;; But I've had poor experiences in the past with that resource disappearing
@@ -100,6 +101,18 @@
     ;; nginx to serve up the static files anyway.
     {:body (slurp url)
      :status 200
+     :headers {"Content-Type" "text/html"}}
+    {:body "<!DOCTYPE html>
+<html>
+  <head>
+    <title>Oops</title>
+  </head>
+  <body>
+    <h1>Missing Index</h1>
+    <p>Odds are, there's something wrong with the way you built your .war file</p>
+  </body>
+</html>"
+     :status 404
      :headers {"Content-Type" "text/html"}}))
 
 (defn index-middleware
@@ -108,6 +121,14 @@
     (let [path (:uri req)]
       (log/debug "Requested:" path)
       (if (= path "/")
+        ;; Need to add ring-anti-forgery around this
+        ;; Q: Is there any real point, considering the basic
+        ;; architecture I have in mind? It really isn't
+        ;; for REST calls, and this is pretty much the only
+        ;; "standard" HTTP request I expect to handle.
+        ;; Actually, I probably shouldn't even handle this
+        ;; one. The same resource handler that's getting my
+        ;; cljs should be able to cope with this.
         (return-index)
         (handler req)))))
 
@@ -119,7 +140,9 @@
   Take the time to learn and appreciate everything that's going on here."
   [handler]
   (-> handler
-      wrap-params
+      debug-middleware
+      (wrap-restful-format :formats [:edn :json-kw :yaml-kw :transit-json :transit-msgpack])
+      wrap-params  ; Q: How does this interact w/ wrap-restful-format?
       (wrap-resource "public")
       (wrap-content-type)
       (wrap-not-modified)))

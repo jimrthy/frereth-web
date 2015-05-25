@@ -1,6 +1,7 @@
 (ns frereth-web.routes.v1
   "Because the API needs to be based on revisions"
-  (:require [frereth-server.comms :as comms]
+  (:require [clojure.string :as string]  ; Really just for echo's reverse
+            [frereth-server.comms :as comms]
             [plumbing.core :as plumbing :refer (defnk)]
             [schema.core :as s]
             [taoensso.timbre :as log]))
@@ -9,6 +10,11 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
+
+(def problem-explanation
+  "Something about the request was wrong"
+  {:problem s/Any
+   (s/optional-key :details) s/Any})
 
 (def version {:major s/Int
               :minor s/Int
@@ -33,3 +39,13 @@ TODO: See how clojurescript and core.async handle that"
    :body (pr-str {:major 0
                   :minor 1
                   :build 1})})
+
+(defnk $echo$POST
+  "Really just for initial testing"
+  {:responses {200 {:reversed s/Str}
+               400 problem-explanation}}
+  [[:request body :- {:submit s/Str}]]
+  (if-let [s (:submit body)]
+    {:reversed (string/reverse s)}
+    {:status 400
+     :body {:problem "Missing submit parameter"}}))
