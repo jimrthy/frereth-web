@@ -11,6 +11,7 @@
             [figwheel-sidecar.auto-builder :as fig-auto]
             [figwheel-sidecar.core :as fig]
             [figwheel-sidecar.repl-api :as repl-api]
+            [frereth-common.util :as util]
             [frereth-web.system :as system]
             [ribol.core :refer (raise)]
             [schema.core :as s]

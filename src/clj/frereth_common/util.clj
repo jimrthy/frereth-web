@@ -7,7 +7,8 @@ Slightly enhanced."
             [clojure.string :as string]
             [puget.printer :as puget]
             [ribol.core :refer [raise]]
-            [schema.core :as s])
+            [schema.core :as s]
+            [taoensso.timbre :as log])
   (:import [java.io PushbackReader]
            [java.lang.reflect Modifier]
            [java.util Collection Date UUID]))
@@ -146,7 +147,16 @@ Slightly enhanced."
 
 (defn pretty
   [& os]
-  (with-out-str (apply puget/cprint os)))
+  #_[o]
+  (try
+    (with-out-str (apply puget/pprint os #_o))
+    (catch RuntimeException ex
+      (log/error ex "Pretty printing failed. Falling back to standard:\n")
+      (str os))
+    (catch AbstractMethodError ex
+      ;; Q: Why isn't this a RuntimeException?
+      (log/error ex "WTF is wrong w/ pretty printing? Falling back to standard:\n")
+      (str os))))
 
 (s/defn pushback-reader :- PushbackReader
   "Probably belongs under something like utils.

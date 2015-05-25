@@ -5,6 +5,7 @@
             [fnhouse.docs :as docs]
             [fnhouse.handlers :as handlers]
             [fnhouse.routes :as routes]
+            [frereth-common.util :as util]
             [frereth-server.comms :as comms]
             [ribol.core :refer [raise]]
             ;; I have dependencies on several other ring wrappers.
@@ -132,6 +133,16 @@
         (return-index)
         (handler req)))))
 
+(s/defn debug-middleware :- HttpRequestHandler
+  "Log the request as it comes in.
+
+TODO: Should probably save it so we can examine later"
+  [handler :- HttpRequestHandler]
+  (s/fn :- RingResponse
+    [req :- RingRequest]
+    (log/debug "Incoming Request:\n" (util/pretty req))
+    (handler req)))
+
 (defn wrap-standard-middleware
   "Build the call stack of everything the standard handlers go through.
 
@@ -140,6 +151,7 @@
   Take the time to learn and appreciate everything that's going on here."
   [handler]
   (-> handler
+      ;; TODO: Only in debug mode
       debug-middleware
       (wrap-restful-format :formats [:edn :json-kw :yaml-kw :transit-json :transit-msgpack])
       wrap-params  ; Q: How does this interact w/ wrap-restful-format?
