@@ -48,6 +48,7 @@
                  [ring-middleware-format "0.5.0"]
 
                  ;;; Client-Specific...more or less
+                 [cljsjs/three "0.0.70-0"]
                  ;; I think I want to exclude this one's org.clojure/tools.reader
                  ;; TODO: This is up to 0.0-3291.
                  ;; But figwheel's documented to work with this version.

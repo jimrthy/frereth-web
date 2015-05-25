@@ -1,6 +1,7 @@
 (ns ^:figwheel-always frereth.core
     "TODO: Do something interesting here"
-    (:require [schema.core :as s]))
+    (:require [schema.core :as s]
+              #_[cljsjs.three :refer (THREE)]))
 
 (enable-console-print!)
 
