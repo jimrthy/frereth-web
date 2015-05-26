@@ -4,6 +4,12 @@
   :cljsbuild {
     :builds [{:id "dev"
               :source-paths ["src/cljs" "dev_src/cljs"]
+              ;; Different output targets should go to different paths
+              ;; Should probably have a different index.?.html based on build
+              ;; profile.
+              ;; Then the route middleware that returns the index could return
+              ;; the one based on build profile (assuming that info's available
+              ;; at run-time)
               :compiler {:output-to "resources/public/js/compiled/frereth.js"
                          :output-dir "resources/public/js/compiled/out"
                          :optimizations :none
@@ -49,6 +55,8 @@
 
                  ;;; Client-Specific...more or less
                  [cljsjs/three "0.0.70-0"]
+                 #_[cljsjs/d3 "3.5.5-3"]
+                 [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
                  ;; I think I want to exclude this one's org.clojure/tools.reader
                  ;; TODO: This is up to 0.0-3291.
                  ;; But figwheel's documented to work with this version.
