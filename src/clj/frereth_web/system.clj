@@ -1,8 +1,11 @@
 (ns frereth-web.system
   "This is where all the interesting stuff gets created.
 
-It's halfway tempting to turn this into its own library,
-just because I find myself copy/pasting it around a lot.
+TODO: Switch to using completion-dsl, now that I've gone
+and done it.
+
+Actually, compare it with this. The code here looks way
+more impressive
 "
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
@@ -196,7 +199,7 @@ extra-files: seq of absolute file paths to merge in. For
    system-description-file-name :- s/Str]
 
   ;; TODO: This should really happen in its own component
-  
+
 
   (let [system-description (-> system-description-file-name
                                io/resource
@@ -244,5 +247,3 @@ extra-files: seq of absolute file paths to merge in. For
                options (combine-options command-line-args system-description)
                init-map (:initialization-map system-description)]
            init-map))
-
-

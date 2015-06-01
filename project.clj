@@ -1,4 +1,4 @@
-(defproject frereth-web "0.1.0-SNAPSHOT"
+(defproject com.frereth/web "0.1.0-SNAPSHOT"
   :clean-targets ^{:protect false} ["resources/public/js/compiled"]
 
   :cljsbuild {
@@ -23,17 +23,11 @@
              {:id "min"
               :source-paths ["src"]
               :compiler {:output-to "resources/public/js/compiled/frereth.js"
-                         :main frereth.core                         
+                         :main frereth.core
                          :optimizations :advanced
                          :pretty-print false}}]}
 
   :dependencies [;; Probably only useful server-side
-                 [com.stuartsierra/component "0.2.3"]
-                 [com.taoensso/timbre "3.4.0" :exclusions [com.taoensso/encore
-                                                           org.clojure/tools.reader]]
-                 [io.aviso/config "0.1.1" :exclusions [org.clojure/clojure
-                                                       prismatic/schema]]
-                 [org.clojure/clojure "1.7.0-RC1"]
                  [org.immutant/immutant "2.0.1" :exclusions [org.clojure/java.classpath
                                                              org.clojure/tools.reader
                                                              org.hornetq/hornetq-commons
@@ -66,21 +60,17 @@
                  [secretary "1.2.3"]
 
                  ;;; Generally Useful
+                 [com.frereth/common "0.0.1-SNAPSHOT" :exclusions [com.jimrthy/cljeromq]]
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
                  [figwheel "0.3.3"]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
                  [figwheel-sidecar "0.3.3"]
-                 [mvxcvi/puget "0.8.1"]
-                 [im.chit/ribol "0.4.0"]
-                 [org.clojure/core.async "0.1.346.0-17112a-alpha" :exclusions [org.clojure/clojure]]
-                 [org.clojure/core.match "0.2.2"]
-                 [org.clojure/tools.reader "0.9.2"]
-                 [prismatic/plumbing "0.4.4"]]
-  :description "Another waffle in my torment about making this web-based"
+                 [org.clojure/core.match "0.2.2"]]
+  :description "Another waffle in my indecision about making this web-based"
 
   :figwheel {
-             :http-server-root "public" ;; default and assumes "resources" 
+             :http-server-root "public" ;; default and assumes "resources"
              :server-port 3449 ;; default
              :css-dirs ["resources/public/css"] ;; watch and update CSS
 
@@ -107,7 +97,7 @@
              ;; :repl false
 
              ;; to configure a different figwheel logfile path
-             ;; :server-logfile "tmp/logs/figwheel-logfile.log" 
+             ;; :server-logfile "tmp/logs/figwheel-logfile.log"
              }
 
   :immutant {:init "frereth-web.core/-main"}
@@ -137,7 +127,7 @@
              :dev [:dev-base :figwheel]}
   :repl-options {:init-ns user
                  :timeout 120000
-                 :welcome (println "Run (dev) then (reset) to begin")}  
+                 :welcome (println "Run (dev) then (reset) to begin")}
   :resource-paths ["resources" "target/js"]
   :source-paths ["src/clj"]
   :target-path "target/%s"
