@@ -19,6 +19,7 @@
             [ring.middleware.not-modified :refer (wrap-not-modified)]
             [ring.middleware.params :refer (wrap-params)]
             [ring.middleware.resource :refer (wrap-resource)]
+            [ring.middleware.stacktrace :refer (wrap-stacktrace)]
             [ring.util.response :as response]
             [schema.core :as s]
             [taoensso.timbre :as log])
@@ -151,8 +152,8 @@ TODO: Should probably save it so we can examine later"
   Take the time to learn and appreciate everything that's going on here."
   [handler]
   (-> handler
-      ;; TODO: Only in debug mode
-      debug-middleware
+      debug-middleware  ; TODO: Only in debug mode
+      wrap-stacktrace   ; TODO: Also just in debug mode
       (wrap-restful-format :formats [:edn :json-kw :yaml-kw :transit-json :transit-msgpack])
       wrap-params  ; Q: How does this interact w/ wrap-restful-format?
       (wrap-resource "public")
