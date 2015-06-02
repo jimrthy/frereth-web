@@ -40,12 +40,16 @@
                                                              org.slf4j/slf4j-api]]
                  ;; immutant is schizophrenic about which version it uses
                  [org.slf4j/slf4j-api "1.7.6"]
-                 [prismatic/fnhouse "0.1.2"]
-                 [ring/ring-core "1.4.0-RC1"]
-                 [ring/ring-anti-forgery "1.0.0"]
-                 [ring/ring-defaults "0.1.5" :exclusions [org.clojure/tools.reader]]
-                 [ring/ring-headers "0.1.3"]
-                 [ring-middleware-format "0.5.0"]
+                 [prismatic/fnhouse "0.1.2" :exclusions [prismatic/plumbing]]
+                 [ring/ring-core "1.4.0-RC1" :exclusions [commons-codec
+                                                          org.clojure/clojure
+                                                          org.clojure/tools.reader]]
+                 [ring/ring-anti-forgery "1.0.0" :exclusions [org.clojure/clojure]]
+                 [ring/ring-defaults "0.1.5" :exclusions [org.clojure/clojure
+                                                          org.clojure/tools.reader]]
+                 [ring/ring-headers "0.1.3" :exclusions [org.clojure/clojure]]
+                 [ring-middleware-format "0.5.0" :exclusions [org.clojure/clojure
+                                                              org.clojure/tools.reader]]
 
                  ;;; Client-Specific...more or less
                  [cljsjs/three "0.0.70-0"]
@@ -55,17 +59,22 @@
                  ;; TODO: This is up to 0.0-3291.
                  ;; But figwheel's documented to work with this version.
                  ;; So start here.
-                 [org.clojure/clojurescript "0.0-3211" :exclusions [org.clojure/tools.reader]]
-                 [org.omcljs/om "0.8.8"]
-                 [secretary "1.2.3"]
+                 [org.clojure/clojurescript "0.0-3211" :exclusions [org.clojure/clojure
+                                                                    org.clojure/tools.reader]]
+                 [org.omcljs/om "0.8.8" :exclusions [org.clojure/clojure]]
+                 [secretary "1.2.3" :exclusions [org.clojure/clojure]]
 
                  ;;; Generally Useful
+                 ;; Really should inherit my clojure version from this.
+                 ;; At least part of the reason I'm having issues is that everything else
+                 ;; is trying to override with an older version.
                  [com.frereth/common "0.0.1-SNAPSHOT" :exclusions [com.jimrthy/cljeromq]]
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
-                 [figwheel "0.3.3"]
+                 [figwheel "0.3.3" :exclusions [org.clojure/clojure]]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
-                 [figwheel-sidecar "0.3.3"]
+                 [figwheel-sidecar "0.3.3" :exclusions [org.clojure/clojure
+                                                        org.clojure/java.classpath]]
                  [org.clojure/core.match "0.2.2"]]
   :description "Another waffle in my indecision about making this web-based"
 
