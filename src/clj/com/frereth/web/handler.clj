@@ -1,12 +1,12 @@
-(ns frereth-web.handler
+(ns com.frereth.web.handler
   "This is where the web server lives"
   (:require [com.stuartsierra.component :as component]
-            [frereth-web.routes.core :as routes]
+            [com.frereth.web.routes.core :as routes]
             [immutant.web :as web]
             [ribol.core :refer (manage raise)]
             [schema.core :as s]
             [taoensso.timbre :as log])
-  (:import [frereth_web.routes.core HttpRoutes]))
+  (:import [com.frereth.web.routes.core HttpRoutes]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema

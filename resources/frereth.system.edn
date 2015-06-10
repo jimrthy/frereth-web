@@ -8,15 +8,15 @@
  ;; it's supplied to my ctors. Should not include anything that
  ;; comes in via runtime.
  :schemas {frereth-server.comms ConnectionCtorDescription
-           frereth-web.completion FinishedCtorHandler
-           frereth-web.routes.core #_[WebSocketDescription]
+           com.frereth.web.completion FinishedCtorHandler
+           com.frereth.web.routes.core #_[WebSocketDescription]
            StandardCtorDescription
-           frereth-web.handler ServerCtorDescription}
- :initialization-map {:complete frereth-web.completion/ctor
-                      :frereth-server frereth-server.comms/ctor
-                      :http-router frereth-web.routes.core/ctor
+           com.frereth.web.handler ServerCtorDescription}
+ :initialization-map {:complete com.frereth.web.completion/ctor
+                      :frereth-server com.frereth.server.comms/ctor
+                      :http-router com.frereth.web.routes.core/ctor
                       ;; TODO: Add the web socket handler
-                      :web-server frereth-web.handler/ctor}
+                      :web-server com.frereth.web.handler/ctor}
  :dependencies {:http-router [:frereth-server]
                 :web-server [:http-router]
                 :frereth-server [:complete]}}

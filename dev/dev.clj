@@ -11,8 +11,8 @@
             [figwheel-sidecar.auto-builder :as fig-auto]
             [figwheel-sidecar.core :as fig]
             [figwheel-sidecar.repl-api :as repl-api]
-            [frereth-common.util :as util]
-            [frereth-web.system :as system]
+            [com.frereth.common.util :as util]
+            [com.frereth.web.system :as system]
             [ribol.core :refer (raise)]
             [schema.core :as s]
             [taoensso.timbre :as log]))
@@ -134,4 +134,3 @@ TODO: switch to it"
     (defn stop-figwheel
       []
       (auto/stop-autobuild! builder)))))
-

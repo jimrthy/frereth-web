@@ -1,6 +1,6 @@
-(ns frereth-web.core
+(ns com.frereth.web.core
   (:require [com.stuartsierra.component :as component]
-            [frereth-web.system :as sys]
+            [com.frereth.web.system :as sys]
             [immutant.daemons :as daemons]
             [ribol.core :refer (raise)])
   ;; Q: Do I want to do this?

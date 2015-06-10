@@ -1,9 +1,10 @@
 (ns frereth-server.comms
   "Interact with 'real' server(s)
 
-  TODO: This is going to be using 0mq"
+  TODO: This module is totally obsolete and should go away.
+  Use frereth.client instead."
   (:require [com.stuartsierra.component :as component]
-            [frereth-web.completion :as completed]
+            [com.frereth.web.completion :as completed]
             [ribol.core :refer (raise)]
             [schema.core :as s]
             [taoensso.timbre :as log]))
@@ -25,7 +26,7 @@
   (start
    [this]
    (log/error "TODO: Create a...actually, we're probably going to need one socket per connection")
-   (comment (raise :not-implemented))
+   (comment) (raise :obsolete)
    this)
   (stop
    [this]
@@ -44,4 +45,3 @@
 (s/defn ^:always-validate ctor :- UnstartedConnection
   [opts :- ConnectionDescription]
   (map->Connection opts))
-

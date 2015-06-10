@@ -13,15 +13,6 @@ Slightly enhanced."
            [java.lang.reflect Modifier]
            [java.util Collection Date UUID]))
 
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Schema
-
-(def async-channel (class (async/chan)))
-(def java-byte-array (Class/forName "[B"))
-;; FIXME: This should probably come from something like
-;; simple-time instead
-(def time-stamp Date)
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; TODO
 
@@ -36,53 +27,6 @@ Slightly enhanced."
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
-
-(defn describe-annotations
-  [as]
-  (map #(.toString %) as))
-
-(s/defn interpret-modifiers :- [s/Keyword]
-  [ms :- s/Int]
-  ;; TODO: this implementation sucks
-  (let [dict {Modifier/ABSTRACT :abstract
-              Modifier/FINAL :final
-              Modifier/INTERFACE :interface
-              Modifier/NATIVE :native
-              Modifier/PRIVATE :private
-              Modifier/PROTECTED :protected
-              Modifier/PUBLIC :public
-              Modifier/STATIC :static
-              Modifier/STRICT :strict
-              Modifier/SYNCHRONIZED :synchronized
-              Modifier/TRANSIENT :transient
-              Modifier/VOLATILE :volatile}]
-    (reduce (fn [acc [k v]]
-              (comment (println "Thinking about assoc'ing " v " with " acc))
-              (if (not= 0 (bit-and ms k))
-                (conj acc v)
-                acc))
-            [] dict)))
-
-(defn describe-field
-  [f]
-  {:name (.getName f)
-   :annotations (map describe-annotations (.getDeclaredAnnotations f))
-   :modifiers (interpret-modifiers (.getModifiers f))})
-
-(defn describe-method
-  [m]
-  {:annotations (map describe-annotations (.getDeclaredAnnotations m))
-   :exceptions (.getExceptionTypes m)
-   :modifiers (interpret-modifiers (.getModifiers m))
-   :return-type (.getReturnType m)
-   :name (.toGenericString m)})
-
-(defn fn-var?
-  [v]
-  (let [f @v]
-    (or (contains? (meta v) :arglists)
-        (fn? f)
-        (instance? clojure.lang.MultiFn f))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -133,30 +77,10 @@ Slightly enhanced."
      ;; in the clojure world
      :type-params (.getTypeParameters k)}))
 
-(s/defn ^:always-validate load-resource
-  [url :- s/Str]
-  (-> url
-      clojure.java.io/resource
-      slurp
-      edn/read-string))
-
-(defn pick-home
-  "Returns the current user's home directory"
-  []
-  (System/getProperty "user.home"))
-
 (defn pretty
   [& os]
   #_[o]
-  (try
-    (with-out-str (apply puget/pprint os #_o))
-    (catch RuntimeException ex
-      (log/error ex "Pretty printing failed. Falling back to standard:\n")
-      (str os))
-    (catch AbstractMethodError ex
-      ;; Q: Why isn't this a RuntimeException?
-      (log/error ex "WTF is wrong w/ pretty printing? Falling back to standard:\n")
-      (str os))))
+)
 
 (s/defn pushback-reader :- PushbackReader
   "Probably belongs under something like utils.

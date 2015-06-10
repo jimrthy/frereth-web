@@ -1,11 +1,13 @@
-(ns frereth-web.routes.core
+(ns com.frereth.web.routes.core
   "Why is mapping HTTP end-points to handlers so contentious?"
   (:require [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
             [fnhouse.docs :as docs]
             [fnhouse.handlers :as handlers]
             [fnhouse.routes :as routes]
-            [frereth-common.util :as util]
+            [com.frereth.common.util :as util]
+            #_[com.frereth.client.system :as client]
+            ;; TODO: switch to the frereth.client instead
             [frereth-server.comms :as comms]
             [ribol.core :refer [raise]]
             ;; I have dependencies on several other ring wrappers.
@@ -25,6 +27,7 @@
             [taoensso.timbre :as log])
   (:import [clojure.lang IPersistentMap ISeq]
            [frereth_server.comms Connection]
+           #_[com.frereth.client.communicator ServerSocket]
            [java.io File InputStream]
            [java.security.cert X509Certificate]))
 
@@ -39,7 +42,7 @@
 ;;; This wouldn't be worthy of any sort of existence outside
 ;;; the web server (until possibly it gets complex), except that
 ;;; the handlers are going to need access to the Connection
-(s/defrecord HttpRoutes [frereth-server :- Connection
+(s/defrecord HttpRoutes [frereth-client :- Connection
                          ;; This is a function that takes 1
                          ;; arg and returns a Ring response.
                          ;; TODO: Spec that schema

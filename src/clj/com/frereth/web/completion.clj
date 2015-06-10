@@ -1,4 +1,4 @@
-(ns frereth-web.completion
+(ns com.frereth.web.completion
   "Flag for marking everything complete
 
   Mainly so background threads can exit and let the

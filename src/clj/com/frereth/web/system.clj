@@ -1,4 +1,4 @@
-(ns frereth-web.system
+(ns com.frereth.web.system
   "This is where all the interesting stuff gets created.
 
 TODO: Switch to using completion-dsl, now that I've gone
@@ -10,7 +10,7 @@ more impressive
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
-            [frereth-common.util :as common]
+            [com.frereth.common.util :as common]
             [io.aviso.config :as cfg]
             [ribol.core :refer (raise)]
             [schema.core :as s]

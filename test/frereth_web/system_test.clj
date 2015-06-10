@@ -1,6 +1,6 @@
 (ns frereth-web.system-test
   (:require [clojure.test :as test :refer (is testing)]
-            [frereth-web.system :refer :all]
+            [com.frereth.web.system :refer :all]
             [schema.core :as s]))
 
 (test/deftest schema-extractors
