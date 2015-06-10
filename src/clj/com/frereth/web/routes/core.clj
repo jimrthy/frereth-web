@@ -187,7 +187,7 @@ making the component available as needed"
 (s/defn wrapped-root-handler
   "Returns a handler (with middleware) for 'normal' http requests"
   [component :- HttpRoutes]
-  (-> (fnhouse-handling component {"v1" 'frereth-web.routes.v1})
+  (-> (fnhouse-handling component {"v1" 'com.frereth.web.routes.v1})
       index-middleware
       wrap-standard-middleware))
 

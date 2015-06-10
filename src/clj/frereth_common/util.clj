@@ -13,6 +13,8 @@ Slightly enhanced."
            [java.lang.reflect Modifier]
            [java.util Collection Date UUID]))
 
+(comment (raise :obsolete))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; TODO
 
@@ -34,10 +36,11 @@ Slightly enhanced."
 (defn cheat-sheet
   "Shamelessly borrowed from https://groups.google.com/forum/#!topic/clojure/j5PmMuhG3d8"
   [ns]
+  (raise {:obsolete "Use frereth.common instead"})
   (let [nsname (str ns)
         vars (vals (ns-publics ns))
         {funs true
-         defs false} (group-by fn-var? vars)
+         defs false} (group-by nil? vars)
         fmeta (map meta funs)
         dmeta (map meta defs)
         flen (apply max 0 (map (comp count str :name) fmeta))
@@ -49,46 +52,50 @@ Slightly enhanced."
     (str ";;; " nsname " {{{1\n\n"
          (string/join \newline lines))))
 
-(defn dir
-  [something]
-  (let [k (class something)
-        bases (.getClasses k)
-        fields (.getDeclaredFields k)
-        useful-fields (map describe-field fields)
-        methods (.getDeclaredMethods k)
-        useful-methods (map describe-method methods)]
-    ;; There are a bunch of associated predicates, but they don't seem all that useful
-    ;; yet.
-    ;; Things like isInterface
-    {:bases bases
-     :declared-bases (.getDeclaredClasses k)   ; I have serious doubts about this' usefulness
-     :canonical-name (.getCanonicalName k)
-     :class-loader (.getClassLoader k)
-     :fields useful-fields
-     :methods useful-methods
-     :owner (.getDeclaringClass k)
-     :encloser (.getEnclosingClass k)
-     :enums (.getEnumConstants k)  ; seems dubiously useless...except when it's needed
-     :package (.getPackage k)
-     :protection-domain (.getProtectionDomain k)
-     :signers (.getSigners k)
-     :simple-name (.getSimpleName k)
-     ;; Definitely deserves more detail...except that this is mostly useless
-     ;; in the clojure world
-     :type-params (.getTypeParameters k)}))
+(comment
+  (defn dir
+    [something]
+    (raise {:obsolete "Use frereth.common instead"})
+    (let [k (class something)
+          bases (.getClasses k)
+          fields (.getDeclaredFields k)
+          useful-fields (map describe-field fields)
+          methods (.getDeclaredMethods k)
+          useful-methods (map describe-method methods)]
+      ;; There are a bunch of associated predicates, but they don't seem all that useful
+      ;; yet.
+      ;; Things like isInterface
+      {:bases bases
+       :declared-bases (.getDeclaredClasses k)   ; I have serious doubts about this' usefulness
+       :canonical-name (.getCanonicalName k)
+       :class-loader (.getClassLoader k)
+       :fields useful-fields
+       :methods useful-methods
+       :owner (.getDeclaringClass k)
+       :encloser (.getEnclosingClass k)
+       :enums (.getEnumConstants k)  ; seems dubiously useless...except when it's needed
+       :package (.getPackage k)
+       :protection-domain (.getProtectionDomain k)
+       :signers (.getSigners k)
+       :simple-name (.getSimpleName k)
+       ;; Definitely deserves more detail...except that this is mostly useless
+       ;; in the clojure world
+       :type-params (.getTypeParameters k)})))
 
 (defn pretty
   [& os]
   #_[o]
-)
+  (raise {:obsolete "Use frereth.common instead"}))
 
 (s/defn pushback-reader :- PushbackReader
   "Probably belongs under something like utils.
 Yes, it does seem pretty stupid"
   [reader]
+  (raise {:obsolete "Use frereth.common instead"})
   (PushbackReader. reader))
 
 (s/defn random-uuid :- UUID
   "Because remembering the java namespace is annoying"
   []
+  (raise {:obsolete "Use frereth.common instead"})
   (UUID/randomUUID))

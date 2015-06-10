@@ -1,4 +1,4 @@
-(ns frereth-web.routes.v1
+(ns com.frereth.web.routes.v1
   "Because the API needs to be based on revisions"
   (:require [clojure.string :as string]  ; Really just for echo's reverse
             [com.frereth.common.util :as util]
