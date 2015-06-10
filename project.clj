@@ -28,7 +28,9 @@
                          :pretty-print false}}]}
 
   :dependencies [;; Probably only useful server-side
-                 [org.immutant/immutant "2.0.1" :exclusions [org.clojure/java.classpath
+                 [org.immutant/immutant "2.0.1" :exclusions [clj-tuple
+                                                             org.clojure/clojure
+                                                             org.clojure/java.classpath
                                                              org.clojure/tools.reader
                                                              org.hornetq/hornetq-commons
                                                              org.hornetq/hornetq-core-client
@@ -37,7 +39,8 @@
                                                              org.hornetq/hornetq-server
                                                              #_org.jboss.logging/jboss-logging
                                                              org.jgroups/jgroups
-                                                             org.slf4j/slf4j-api]]
+                                                             org.slf4j/slf4j-api
+                                                             riddley]]
                  ;; immutant is schizophrenic about which version it uses
                  [org.slf4j/slf4j-api "1.7.6"]
                  [prismatic/fnhouse "0.1.2" :exclusions [prismatic/plumbing]]
@@ -68,14 +71,15 @@
                  ;; Really should inherit my clojure version from this.
                  ;; At least part of the reason I'm having issues is that everything else
                  ;; is trying to override with an older version.
-                 [com.frereth/common "0.0.1-SNAPSHOT" :exclusions [com.jimrthy/cljeromq]]
-                 [com.taoensso/sente "1.4.1" :exclusions [org.clojure/tools.reader]]
+                 [com.frereth/client "0.1.0-SNAPSHOT"]
+                 [com.taoensso/sente "1.4.1" :exclusions [org.clojure/clojure
+                                                          org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
                  [figwheel "0.3.3" :exclusions [org.clojure/clojure]]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
                  [figwheel-sidecar "0.3.3" :exclusions [org.clojure/clojure
                                                         org.clojure/java.classpath]]
-                 [org.clojure/core.match "0.2.2"]]
+                 [org.clojure/core.match "0.2.2" :exclusions [org.clojure/clojure]]]
   :description "Another waffle in my indecision about making this web-based"
 
   :figwheel {
