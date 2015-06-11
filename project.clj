@@ -115,6 +115,8 @@
 
   :immutant {:init "frereth-web.core/-main"}
 
+  :jvm-opts [~(str "-Djava.library.path=/usr/local/lib:" (System/getenv "LD_LIBRARY_PATH"))]
+
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main ^:skip-aot frereth-web.core

@@ -1,9 +1,8 @@
 (ns com.frereth.web.routes.v1
   "Because the API needs to be based on revisions"
   (:require [clojure.string :as string]  ; Really just for echo's reverse
+            [com.frereth.client.communicator :as comms]
             [com.frereth.common.util :as util]
-            ;; TODO: Make this go away
-            [frereth-server.comms :as comms]
             [plumbing.core :as plumbing :refer (defnk)]
             [schema.core :as s]
             [taoensso.timbre :as log]))
