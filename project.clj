@@ -69,15 +69,15 @@
 
                  ;;; Generally Useful
                  ;; Really should inherit my clojure version from this.
-                 ;; At least part of the reason I'm having issues is that everything else
-                 ;; is trying to override with an older version.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
-                 [figwheel "0.3.3" :exclusions [org.clojure/clojure]]
+                 [figwheel "0.3.3" :exclusions [cider/cider-nrepl
+                                                org.clojure/clojure]]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
-                 [figwheel-sidecar "0.3.3" :exclusions [org.clojure/clojure
+                 [figwheel-sidecar "0.3.3" :exclusions [cider/cider-nrepl
+                                                        org.clojure/clojure
                                                         org.clojure/java.classpath]]
                  [org.clojure/core.match "0.2.2" :exclusions [org.clojure/clojure]]]
   :description "Another waffle in my indecision about making this web-based"
