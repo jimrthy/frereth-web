@@ -5,7 +5,7 @@
             [ribol.core :refer (raise)])
   ;; Q: Do I want to do this?
   ;; It just seems to cause trouble
-  (:gen-class))
+  #_(:gen-class))
 
 (defn -main
   "This is where immutant will kick off"

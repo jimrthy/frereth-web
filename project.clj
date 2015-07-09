@@ -68,6 +68,7 @@
                  [secretary "1.2.3" :exclusions [org.clojure/clojure]]
 
                  ;;; Generally Useful
+                 #_[cider/cider-nrepl "0.9.1"]  ; definitely should not need to do this
                  ;; Really should inherit my clojure version from this.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/clojure
@@ -121,7 +122,8 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main ^:skip-aot frereth-web.core
 
-  :plugins [[com.jakemccrary/lein-test-refresh "0.9.0"]
+  :plugins [[cider/cider-nrepl "0.9.1"] ; shouldn't need to do this. No idea what's pulling in 0.8.2.
+            [com.jakemccrary/lein-test-refresh "0.9.0"]
             [lein-cljsbuild "1.0.5" :exclusions [org.clojure/clojure]]
             [lein-figwheel "0.3.3" :exclusions [org.codehaus.plexus/plexus-utils
                                                 org.clojure/clojure]]]
