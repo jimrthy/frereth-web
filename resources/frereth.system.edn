@@ -1,4 +1,4 @@
-;;;; Because describing the dependency tree in a DSL is less
+;;;; Because just declaring the dependency tree is less
 ;;;; annoying than managing the whole thing in 3 different spots.
 ;;;; At least, that's my current theory
 
@@ -6,14 +6,13 @@
  ;; that will be used to validate the rest of the configuration
  ;; Actually, they're used to validate the configuration before
  ;; it's supplied to my ctors. Should not include anything that
- ;; comes in via runtime.
- :schemas {frereth-server.comms ConnectionCtorDescription
-           com.frereth.web.completion FinishedCtorHandler
-           com.frereth.web.routes.core #_[WebSocketDescription]
-           StandardCtorDescription
+ ;; comes in when they start.
+ :schemas {com.frereth.web.completion FinishedCtorHandler
+           com.frereth.web.routes.core StandardCtorDescription
+           com.frereth.web.system UnstartedClientSystem
            com.frereth.web.handler ServerCtorDescription}
  :initialization-map {:complete com.frereth.web.completion/ctor
-                      :frereth-server com.frereth.server.comms/ctor
+                      :frereth-server com.frereth.client.system/init
                       :http-router com.frereth.web.routes.core/ctor
                       ;; TODO: Add the web socket handler
                       :web-server com.frereth.web.handler/ctor}

@@ -10,7 +10,7 @@ more impressive
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
-            [com.frereth.common.util :as common]
+            [com.frereth.common.util :as util]
             [component-dsl.system :as cpt-dsl]
             [io.aviso.config :as cfg]
             [ribol.core :refer (raise)]
@@ -22,7 +22,10 @@ more impressive
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-
+;; Q: Where on Earth is this coming from?
+(def UnstartedClientSystem {:frereth-server {:address s/Str
+                                             :protocol s/Str
+                                             :port s/Int}})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internals
@@ -35,11 +38,8 @@ TODO: Move to a Component in common"
    ;; TODO: This needs to rotate
    [:appenders :spit :enabled?] true)
   (log/set-config! [:shared-appender-config :spit-filename]
-                   (str (common/pick-home) "/" log-file-name ".log"))
+                   (str (util/pick-home) "/" log-file-name ".log"))
   (log/info "Logging configured"))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Public
 
 ;; TODO: What's the schema?
 ;; I'm using some pieces in here and ctor that are really internal
@@ -56,6 +56,9 @@ TODO: Move to a Component in common"
                                  :additional-files []
                                  :args command-line-args
                                  :profiles []})))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public
 
 (s/defn ctor :- SystemMap
   "Returns a system that's ready to start, based on config
@@ -85,14 +88,10 @@ extra-files: seq of absolute file paths to merge in. For
    system-description-file-name :- s/Str]
 
   ;; TODO: This should really happen in its own component
-
-
   (let [system-description (-> system-description-file-name
                                io/resource
                                io/reader
-                               ;; It seems fucking ridiculous that it's so
-                               ;; complicated to build this stupid thing
-                               common/pushback-reader
+                               util/pushback-reader
                                edn/read)
         options (combine-options command-line-args system-description)
         pre-init (-> system-description
@@ -107,9 +106,7 @@ extra-files: seq of absolute file paths to merge in. For
         system-description (-> system-description-file-name
                                io/resource
                                io/reader
-                               ;; It seems fucking ridiculous that it's so
-                               ;; complicated to build this stupid thing
-                               common/pushback-reader
+                               util/pushback-reader
                                edn/read)
         options (combine-options command-line-args system-description)
         descr (:initialization-map system-description)
@@ -127,7 +124,7 @@ extra-files: seq of absolute file paths to merge in. For
                                       io/reader
                                       ;; It seems fucking ridiculous that it's so
                                       ;; complicated to build this stupid thing
-                                      common/pushback-reader
+                                      util/pushback-reader
                                       edn/read)
                options (combine-options command-line-args system-description)
                init-map (:initialization-map system-description)]
