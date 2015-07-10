@@ -7,6 +7,7 @@
             [fnhouse.routes :as routes]
             [com.frereth.common.util :as util]
             [com.frereth.client.communicator :as comms]
+            [com.frereth.web.routes.v1]  ; Just so it gets compiled, so fnhouse can find it
             [ribol.core :refer [raise]]
             ;; I have dependencies on several other ring wrappers.
             ;; Esp. anti-forgery, defaults, and headers.
@@ -54,7 +55,7 @@
 
 (def UnstartedHttpRoutes (assoc StandardDescription
                                 :http-router s/Any
-                                :frereth-server s/Any))
+                                :frereth-client s/Any))
 
 (def HttpRouteMap
   "Map of route prefix to the namespace where the handler should live"

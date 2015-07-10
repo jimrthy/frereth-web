@@ -55,7 +55,7 @@
   ;; Well, besides for the things that will obviously change, like
   ;; URLs and passwords
   (alter-var-root #'system
-                  (constantly (system/ctor [] "frereth.system.edn"))))
+                  (constantly (system/ctor nil nil))))
 
 (defn start
   "Starts the current development system."

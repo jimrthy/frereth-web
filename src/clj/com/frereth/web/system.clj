@@ -22,11 +22,6 @@ more impressive
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-;; Q: Where on Earth is this coming from?
-(def UnstartedClientSystem {:frereth-server {:address s/Str
-                                             :protocol s/Str
-                                             :port s/Int}})
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internals
 
@@ -85,19 +80,34 @@ extra-files: seq of absolute file paths to merge in. For
   the sake of setting up configuration outside the CLASSPATH
 "
   [command-line-args
-   system-description-file-name :- s/Str]
+   config-file-name :- s/Str]
 
-  ;; TODO: This should really happen in its own component
-  (let [system-description (-> system-description-file-name
-                               io/resource
-                               io/reader
-                               util/pushback-reader
-                               edn/read)
-        options (combine-options command-line-args system-description)
-        pre-init (-> system-description
-                     :initialization-map
-                     (cpt-dsl/system-map options))]
-    (cpt-dsl/dependencies pre-init (:dependencies system-description))))
+  ;; TODO: Go back to the original, commented-out version.
+  (comment
+    (let [system-description (-> system-description-file-name
+                                 io/resource
+                                 io/reader
+                                 util/pushback-reader
+                                 edn/read)
+          options (combine-options command-line-args system-description)
+          pre-init (-> system-description
+                       :initialization-map
+                       (cpt-dsl/system-map options))]
+      (cpt-dsl/dependencies pre-init (:dependencies system-description))))
+  (let [constructors '{:complete com.frereth.web.completion/ctor
+                       ;; Poor name. This is really the frereth-client.
+                       ;; Or maybe the frereth-server-connection.
+                       ;; TODO: Pick a better one.
+                       :frereth-server com.frereth.client.system/init
+                       :http-router com.frereth.web.routes.core/ctor
+                       ;; TODO: Add the web socket handler
+                       :web-server com.frereth.web.handler/ctor}
+        dependencies  {:http-router [:frereth-server]
+                       :web-server [:http-router]
+                       :frereth-server [:complete]}]
+    (cpt-dsl/build {:structure constructors
+                    :dependencies dependencies}
+                   {})))
 
 ;; TODO: This needs to be a unit test
 (comment
