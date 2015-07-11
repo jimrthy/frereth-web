@@ -28,7 +28,7 @@
                          :pretty-print false}}]}
 
   :dependencies [;; Probably only useful server-side
-                 [org.immutant/immutant "2.0.1" :exclusions [clj-tuple
+                 [org.immutant/immutant "2.0.2" :exclusions [clj-tuple
                                                              org.clojure/clojure
                                                              org.clojure/java.classpath
                                                              org.clojure/tools.reader
@@ -37,7 +37,6 @@
                                                              org.hornetq/hornetq-journal
                                                              org.hornetq/hornetq-native
                                                              org.hornetq/hornetq-server
-                                                             #_org.jboss.logging/jboss-logging
                                                              org.jgroups/jgroups
                                                              org.slf4j/slf4j-api
                                                              riddley]]
