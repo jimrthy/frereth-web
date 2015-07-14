@@ -1,5 +1,6 @@
 (ns dev
-  (:require [clojure.edn :as edn]
+  (:require [cljeromq.core :as mq]
+            [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.inspector :as i]
             [clojure.string :as str]
