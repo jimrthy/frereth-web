@@ -95,14 +95,16 @@ extra-files: seq of absolute file paths to merge in. For
                        (cpt-dsl/system-map options))]
       (cpt-dsl/dependencies pre-init (:dependencies system-description))))
   (let [constructors '{:complete com.frereth.web.completion/ctor
+                       :connection-manager com.frereth.web.connection-manager/ctor
                        ;; Poor name. This is really the frereth-client.
                        ;; Or maybe the frereth-server-connection.
-                       ;; TODO: Pick a better one.
+                       ;; TODO: Either way, pick a better one.
                        :frereth-server com.frereth.client.system/init
                        :http-router com.frereth.web.routes.core/ctor
                        ;; TODO: Add the web socket handler
                        :web-server com.frereth.web.handler/ctor}
-        dependencies  {:http-router [:frereth-server]
+        dependencies  {:connection-manager [:frereth-server]
+                       :http-router [:connection-manager]
                        :web-server [:http-router]
                        :frereth-server [:complete]}]
     (cpt-dsl/build {:structure constructors
@@ -132,7 +134,7 @@ extra-files: seq of absolute file paths to merge in. For
                system-description (-> system-description-file-name
                                       io/resource
                                       io/reader
-                                      ;; It seems fucking ridiculous that it's so
+                                      ;; It seems ridiculous that it's so
                                       ;; complicated to build this stupid thing
                                       util/pushback-reader
                                       edn/read)
