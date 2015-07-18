@@ -95,7 +95,6 @@ extra-files: seq of absolute file paths to merge in. For
                        (cpt-dsl/system-map options))]
       (cpt-dsl/dependencies pre-init (:dependencies system-description))))
   (let [constructors '{:complete com.frereth.web.completion/ctor
-                       :connection-manager com.frereth.web.connection-manager/ctor
                        ;; Poor name. This is really the frereth-client.
                        ;; Or maybe the frereth-server-connection.
                        ;; TODO: Either way, pick a better one.
@@ -103,8 +102,7 @@ extra-files: seq of absolute file paths to merge in. For
                        :http-router com.frereth.web.routes.core/ctor
                        ;; TODO: Add the web socket handler
                        :web-server com.frereth.web.handler/ctor}
-        dependencies  {:connection-manager [:frereth-server]
-                       :http-router [:connection-manager]
+        dependencies  {:http-router [:frereth-server]
                        :web-server [:http-router]
                        :frereth-server [:complete]}]
     (cpt-dsl/build {:structure constructors
