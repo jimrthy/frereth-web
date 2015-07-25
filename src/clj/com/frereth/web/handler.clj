@@ -22,7 +22,9 @@
     component/Lifecycle
   (start
    [this]
-   (let [server-options (web/run (:http-router http-router))]
+   ;; TODO: Ditch the magic numbers. Pull config from a config file/envvar
+   (let [server-options (web/run (:http-router http-router) {:host "0.0.0.0"
+                                                             :port 8093})]
      (into this {:killer server-options})))
 
   (stop

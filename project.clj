@@ -1,5 +1,5 @@
 (defproject com.frereth/web "0.1.0-SNAPSHOT"
-  :clean-targets ^{:protect false} ["resources/public/js/compiled"]
+  :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
 
   :cljsbuild {
     :builds [{:id "dev"
@@ -11,23 +11,30 @@
               ;; the one based on build profile (assuming that info's available
               ;; at run-time)
               :compiler {:output-to "resources/public/js/compiled/frereth.js"
-                         :output-dir "resources/public/js/compiled/out"
+                         :output-dir "resources/public/js/compiled"
                          :optimizations :none
-                         :main frereth.dev
+                         :main frereth.dev   ; Q: Huh?
+                         ;;:main frereth.core
                          :asset-path "js/compiled/out"
+                         ;;:source-map "resources/public/js/compiled/frereth.js.map"
                          :source-map true
                          :source-map-timestamp true
-                         :cache-analysis true }}
+                         ;;:cache-analysis true
+                         }}
              ;; TODO: Compare the output size of this vs. standard
              ;; minification
-             {:id "min"
+             #_{:id "min"
               :source-paths ["src"]
               :compiler {:output-to "resources/public/js/compiled/frereth.js"
                          :main frereth.core
+                         ;; TODO: Advanced compilation has gone away
+                         ;; Actually, the entire google.clojure compiler has gone away
+                         ;; Q: Why am I getting errors from that?
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [;; Probably only useful server-side
+  :dependencies [[org.clojure/clojure "1.7.0"] ; absolutely should not need this
+                 ;; Probably only useful server-side
                  [org.immutant/immutant "2.0.2" :exclusions [clj-tuple
                                                              org.clojure/clojure
                                                              org.clojure/java.classpath
@@ -58,12 +65,15 @@
                  [cljsjs/three "0.0.70-0"]
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
-                 ;; I think I want to exclude this one's org.clojure/tools.reader
                  ;; TODO: This is up to 0.0-3308.
                  ;; But figwheel's documented to work with this version.
                  ;; So start here.
-                 [org.clojure/clojurescript "0.0-SNAPSHOT" :exclusions [org.clojure/clojure
-                                                                    org.clojure/tools.reader]]
+                 #_[org.clojure/clojurescript "0.0-3211" :exclusions [org.clojure/clojure
+                                                                      org.clojure/tools.reader]]
+                 [org.clojure/clojurescript "0.0-3308" :exclusions [org.clojure/clojure
+                                                                      org.clojure/tools.reader]]
+                 #_[org.clojure/clojurescript "0.0-SNAPSHOT" :exclusions [org.clojure/clojure
+                                                                        org.clojure/tools.reader]]
                  [org.omcljs/om "0.8.8" :exclusions [org.clojure/clojure]]
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
                                                  org.clojure/clojurescript]]
@@ -75,11 +85,11 @@
                  [com.taoensso/sente "1.4.1" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
-                 [figwheel "0.3.3" :exclusions [cider/cider-nrepl
+                 [figwheel "0.3.5" :exclusions [cider/cider-nrepl
                                                 org.clojure/clojure
                                                 org.clojure/clojurescript]]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
-                 [figwheel-sidecar "0.3.3" :exclusions [cider/cider-nrepl
+                 [figwheel-sidecar "0.3.5" :exclusions [cider/cider-nrepl
                                                         org.clojure/clojure
                                                         org.clojure/clojurescript
                                                         org.clojure/java.classpath]]
@@ -87,9 +97,11 @@
   :description "Another waffle in my indecision about making this web-based"
 
   :figwheel {
-             :http-server-root "public" ;; default and assumes "resources"
-             :server-port 3449 ;; default
              :css-dirs ["resources/public/css"] ;; watch and update CSS
+
+             :http-server-root "public" ;; default and assumes "resources"
+
+             :server-port 3449 ;; default
 
              ;; Start an nREPL server into the running figwheel process
              ;; I'm dubious. Q: What's the point?
@@ -123,12 +135,12 @@
 
   :license {:name "Eclipse Public License"
             :url "http://www.eclipse.org/legal/epl-v10.html"}
-  :main ^:skip-aot frereth-web.core
+  :main ^:skip-aot com.frereth.web.core
 
   :plugins [[cider/cider-nrepl "0.9.1"] ; shouldn't need to do this. No idea what's pulling in 0.8.2.
             [com.jakemccrary/lein-test-refresh "0.9.0"]
-            [lein-cljsbuild "1.0.5" :exclusions [org.clojure/clojure]]
-            [lein-figwheel "0.3.3" :exclusions [org.codehaus.plexus/plexus-utils
+            [lein-cljsbuild "1.0.6" :exclusions [org.clojure/clojure]]
+            [lein-figwheel "0.3.5" :exclusions [org.codehaus.plexus/plexus-utils
                                                 org.clojure/clojure]]]
 
   :profiles {:dev-base {:immutant {:context-path "/frereth"

@@ -3,7 +3,8 @@
     (:require [schema.core :as s]
               [cljsjs.three]
               #_[cljsjs.gl-matrix]
-              #_[cljsjs.d3]))
+              #_[cljsjs.d3]
+              [frereth.repl :as repl]))
 
 (enable-console-print!)
 
@@ -48,6 +49,7 @@
               (.requestAnimationFrame js/window animate)
               (render))]
       (animate))))
+(repl/start)
 
 (s/defn reflect :- {s/Keyword s/Any}
   "TODO: This doesn't belong here. But it's probably a better
