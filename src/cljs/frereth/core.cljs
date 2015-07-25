@@ -1,16 +1,18 @@
 (ns ^:figwheel-always frereth.core
     "TODO: Do something interesting here"
-    (:require [schema.core :as s]
+    (:require-macros [schema.macros :as macros]
+                     [schema.core])
+    (:require #_[schema.core :as s]
               [cljsjs.three]
               #_[cljsjs.gl-matrix]
               #_[cljsjs.d3]
               [frereth.repl :as repl]))
-
 (enable-console-print!)
 
 (println "Trying to require THREE")
 
-;; define your app data so that it doesn't get over-written on reload
+  ;; define your app data so that it doesn't get over-written on reload
+
 
 (defonce app-state (atom {:text "Hello from cljsjs!"}))
 
@@ -22,36 +24,36 @@
                     "+" (.str js/vec3 v2)
                     "=" (.str js/vec3 v3))))
 
-(comment
-  ;; TODO: What's a good way to make this silly thing get included?
-  (println (.version js/THREE)))
+(defn start-3
+  [THREE]
+  (let [camera (THREE.PerspectiveCamera. 75 (/ (.-innerWidth js/window)
+                                               (.-innerHeight js/window)) 1 10000)
+        scene (THREE.Scene.)
+        geometry (THREE.BoxGeometry. 200 200 200)
+        obj (js/Object.)]
+    (set! (.-z (.-position camera)) 10000)
+    (set! (.-color obj) 0xff0000)
+    (set! (.-wireframe obj) true)
+    (let [material (THREE.MeshBasicMaterial. obj)
+          mesh (THREE.Mesh. geometry material)
+          ;; Q: What should I use instead?
+          renderer (THREE.WebGLRenderer.)]
+      (.add scene mesh)
+      (.setSize renderer (.-innerWidth js/window) (.-innerHeight js/window))
+      (.appendChild (.-body js/document) (.-domElement renderer))
+      (letfn [(render []
+                      (set! (.-x (.-rotation mesh)) (+ (.-x (.-rotation mesh)) 0.01))
+                      (set! (.-y (.-rotation mesh)) (+ (.-y (.-rotation mesh)) 0.02))
+                      (.render renderer scene camera))
+              (animate []
+                       (.requestAnimationFrame js/window animate)
+                       (render))]
+        (animate)))))
 
-(let [THREE js/THREE
-      camera (THREE.PerspectiveCamera. 75 (/ (.-innerWidth js/window)
-                                             (.-innerHeight js/window)) 1 10000)
-      scene (THREE.Scene.)
-      geometry (THREE.CubeGeometry. 200 200 200)
-      obj (js/Object.)]
-  (set! (.-z (.-position camera)) 10000)
-  (set! (.-color obj) 0xff0000)
-  (set! (.-wireframe obj) true)
-  (let [material (THREE.MeshBasicMaterial. obj)
-        mesh (THREE.Mesh. geometry material)
-        renderer (THREE.CanvasRenderer.)]
-    (.add scene mesh)
-    (.setSize renderer (.-innerWidth js/window) (.-innerHeight js/window))
-    (.appendChild (.-body js/document) (.-domElement renderer))
-    (letfn [(render []
-              (set! (.-x (.-rotation mesh)) (+ (.-x (.-rotation mesh)) 0.01))
-              (set! (.-y (.-rotation mesh)) (+ (.-y (.-rotation mesh)) 0.02))
-              (.render renderer scene camera))
-            (animate []
-              (.requestAnimationFrame js/window animate)
-              (render))]
-      (animate))))
 (repl/start)
+(start-3 js/THREE)
 
-(s/defn reflect :- {s/Keyword s/Any}
+(defn reflect  ; :- {s/Keyword s/Any}
   "TODO: This doesn't belong here. But it's probably a better
 location than common.clj where I was storing it.
 It's tempting to change that to common.cljc, but I'm not

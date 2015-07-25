@@ -13,12 +13,13 @@
               :compiler {:output-to "resources/public/js/compiled/frereth.js"
                          :output-dir "resources/public/js/compiled"
                          :optimizations :none
-                         :main frereth.dev   ; Q: Huh?
+                         :main frereth.core   ; Q: Huh?
                          ;;:main frereth.core
-                         :asset-path "js/compiled/out"
+                         :asset-path "js/compiled"
                          ;;:source-map "resources/public/js/compiled/frereth.js.map"
                          :source-map true
                          :source-map-timestamp true
+                         :verbose true
                          ;;:cache-analysis true
                          }}
              ;; TODO: Compare the output size of this vs. standard
@@ -70,9 +71,9 @@
                  ;; So start here.
                  #_[org.clojure/clojurescript "0.0-3211" :exclusions [org.clojure/clojure
                                                                       org.clojure/tools.reader]]
-                 [org.clojure/clojurescript "0.0-3308" :exclusions [org.clojure/clojure
+                 #_[org.clojure/clojurescript "0.0-3308" :exclusions [org.clojure/clojure
                                                                       org.clojure/tools.reader]]
-                 #_[org.clojure/clojurescript "0.0-SNAPSHOT" :exclusions [org.clojure/clojure
+                 [org.clojure/clojurescript "0.0-SNAPSHOT" :exclusions [org.clojure/clojure
                                                                         org.clojure/tools.reader]]
                  [org.omcljs/om "0.8.8" :exclusions [org.clojure/clojure]]
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
