@@ -44,6 +44,7 @@
                  [org.slf4j/slf4j-api "1.7.6"]
                  [prismatic/fnhouse "0.1.2" :exclusions [prismatic/plumbing]]
                  [ring/ring-core "1.4.0-RC1" :exclusions [commons-codec
+                                                          joda-time
                                                           org.clojure/clojure
                                                           org.clojure/tools.reader]]
                  [ring/ring-anti-forgery "1.0.0" :exclusions [org.clojure/clojure]]
@@ -58,13 +59,14 @@
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
                  ;; I think I want to exclude this one's org.clojure/tools.reader
-                 ;; TODO: This is up to 0.0-3291.
+                 ;; TODO: This is up to 0.0-3308.
                  ;; But figwheel's documented to work with this version.
                  ;; So start here.
-                 [org.clojure/clojurescript "0.0-3211" :exclusions [org.clojure/clojure
+                 [org.clojure/clojurescript "0.0-SNAPSHOT" :exclusions [org.clojure/clojure
                                                                     org.clojure/tools.reader]]
                  [org.omcljs/om "0.8.8" :exclusions [org.clojure/clojure]]
-                 [secretary "1.2.3" :exclusions [org.clojure/clojure]]
+                 [secretary "1.2.3" :exclusions [org.clojure/clojure
+                                                 org.clojure/clojurescript]]
 
                  ;;; Generally Useful
                  #_[cider/cider-nrepl "0.9.1"]  ; definitely should not need to do this
@@ -74,10 +76,12 @@
                                                           org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
                  [figwheel "0.3.3" :exclusions [cider/cider-nrepl
-                                                org.clojure/clojure]]
+                                                org.clojure/clojure
+                                                org.clojure/clojurescript]]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
                  [figwheel-sidecar "0.3.3" :exclusions [cider/cider-nrepl
                                                         org.clojure/clojure
+                                                        org.clojure/clojurescript
                                                         org.clojure/java.classpath]]
                  [org.clojure/core.match "0.2.2" :exclusions [org.clojure/clojure]]]
   :description "Another waffle in my indecision about making this web-based"
