@@ -3,6 +3,7 @@
 
   :cljsbuild {
     :builds [{:id "dev"
+              :figwheel {:websocket-host "10.0.3.152"}
               :source-paths ["src/cljs" "dev_src/cljs"]
               ;; Different output targets should go to different paths
               ;; Should probably have a different index.?.html based on build

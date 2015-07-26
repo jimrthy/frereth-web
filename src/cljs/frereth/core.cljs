@@ -9,7 +9,7 @@
               [frereth.repl :as repl]))
 (enable-console-print!)
 
-(println "Trying to require THREE")
+(println "Top of core")
 
   ;; define your app data so that it doesn't get over-written on reload
 
@@ -36,7 +36,9 @@
     (set! (.-wireframe obj) true)
     (let [material (THREE.MeshBasicMaterial. obj)
           mesh (THREE.Mesh. geometry material)
-          ;; Q: What should I use instead?
+          ;; I really want a 2-d renderer for this
+          ;; That used to be a CanvasRenderer
+          ;; But apparently that's been deprecated back to a demo
           renderer (THREE.WebGLRenderer.)]
       (.add scene mesh)
       (.setSize renderer (.-innerWidth js/window) (.-innerHeight js/window))
