@@ -71,28 +71,7 @@
     (init-state
      [_]
      {:input ""
-      :namespace "user"
-      :evaluator (async/chan)})
-    om/IWillMount
-    (will-mount
-     [_]
-     ;; It seems as though this is what should handle
-     ;; the channel creation. Since there doesn't seem
-     ;; to be a better place to close! it than IWillUnmount
-     (let [evaluator (om/get-state owner :evaluator)]
-       (go (loop []
-             (when-let [forms (<! evaluator)]
-               ;; TODO: evaluate forms. Do this update inside the
-               ;; callback of the evaluation instead
-               (om/transact! data :output
-                             (fn [xs]
-                               (conj xs forms))))
-             (recur)))))
-    om/IWillUnmount
-    (will-unmount
-     [_]
-     (let [evaluator (om/get-state owner :evaluator)]
-       (async/close! evaluator)))
+      :namespace "user"})
     om/IRenderState
     (render-state
      [this {:keys [input namespace]}]
@@ -109,6 +88,7 @@
                                        evaluator (om/get-state owner :evaluator)]
                                    (println "I've been clicked! Sending\n"
                                             forms "\nto\n" evaluator)
+                                   (js/log evaluator)
                                    ;; I'm getting a warning about returning false from an event handler.
                                    ;; Q: Why?
                                    (if forms
@@ -120,28 +100,54 @@
 (defn repl-wrapper
   [data owner]
   (reify
-    om/IRender
-    (render
+    om/IInitState
+    (init-state [_]
+                {:evaluator (async/chan)})
+    om/IWillMount
+    (will-mount
      [_]
+     ;; It seems as though this is what should handle
+     ;; the channel creation. Since there doesn't seem
+     ;; to be a better place to close! it than IWillUnmount
+     (let [evaluator (om/get-state owner :evaluator)]
+       (go (loop []
+             (when-let [forms (<! evaluator)]
+               ;; TODO: evaluate forms. Do this update inside the
+               ;; callback of the evaluation instead
+               (om/transact! data :output
+                             (fn [xs]
+                               (conj xs forms))))
+             (recur)))))
+    om/IRenderState
+    (render-state
+     [this state]
      ;; Honestly, this is sideways.
      ;; Really want to build the result columns up,
-     ;; then combine those individual components into a table
-     (let [repls (:repls data)
-           headings (map :heading repls)
-           output-columns (mapv :output repls)
-           input (map :input repls)
-           namespaces (map :namespaces repls)
+     ;; then combine those individual components
+     ;; horizontally into a table
+     (let [repl (-> data :repls first)
+           heading (:heading repl)
+           output-rows (:output repl)
+           input (:input repl)
+           namespaces (:namespaces repl)
            table-style #js {:border "1px solid black;"}]
        (dom/table #js {:style table-style}
-                  ;; Header: which REPL is this?
-                  (apply dom/tr nil
-                         (map (partial dom/th #js {:style table-style}) headings))
-                  ;; Output: what's come from the printer?
-                  (om/build-all printer output-columns)
-                  ;; Input: What is the user entering?
-                  (apply dom/tr nil
-                         (map (partial dom/td #js {:style table-style})
-                              (om/build-all reader input))))))))
+                  (dom/tbody nil
+                             ;; Header: which REPL is this?
+                             (dom/tr nil
+                                     (dom/th #js {:style table-style} heading))
+                             ;; Output: what's come from the printer?
+                             (om/build printer output-rows)
+                             ;; Input: What is the user entering?
+                             (dom/tr nil
+                                     (dom/td #js {:style table-style}
+                                             (om/build reader input
+                                                       {:init-state state})))))))
+    om/IWillUnmount
+    (will-unmount
+     [_]
+     (let [evaluator (om/get-state owner :evaluator)]
+       (async/close! evaluator)))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
