@@ -61,8 +61,8 @@
    om/IWillUnmount
    (will-unmount
     [_]
-    (let [evaluator (om/get-state owner :evaluated)]
-      (async/close! evaluator)))))
+    (comment (let [evaluator (om/get-state owner :evaluated)]
+               (async/close! evaluator))))))
 
 (defn reader
   [data owner]
@@ -76,7 +76,7 @@
     (render-state
      [this {:keys [input namespace]}]
      (dom/div nil
-      (dom/input #js {:placeHolder (str namespace " =>")
+      (dom/input #js {:placeholder (str namespace " =>")
                       :type "text"
                       :ref "to-read"}
                  nil)
@@ -87,8 +87,8 @@
                                        forms (.-value elm)
                                        evaluator (om/get-state owner :evaluator)]
                                    (println "I've been clicked! Sending\n"
-                                            forms "\nto\n" evaluator)
-                                   (js/log evaluator)
+                                            forms "\nto\n" evaluator
+                                            "which is" (if evaluator "" " not") " truthy")
                                    ;; I'm getting a warning about returning false from an event handler.
                                    ;; Q: Why?
                                    (if forms
@@ -114,7 +114,7 @@
              (when-let [forms (<! evaluator)]
                ;; TODO: evaluate forms. Do this update inside the
                ;; callback of the evaluation instead
-               (om/transact! data :output
+               (om/transact! data [:repls 0 :output]
                              (fn [xs]
                                (conj xs forms))))
              (recur)))))
@@ -146,8 +146,8 @@
     om/IWillUnmount
     (will-unmount
      [_]
-     (let [evaluator (om/get-state owner :evaluator)]
-       (async/close! evaluator)))))
+     (comment (let [evaluator (om/get-state owner :evaluator)]
+                (async/close! evaluator))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
