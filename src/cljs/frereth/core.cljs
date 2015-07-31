@@ -1,12 +1,14 @@
 (ns ^:figwheel-always frereth.core
     "TODO: Do something interesting here"
-    (:require-macros [schema.macros :as macros]
+    (:require-macros [cljs.core.async.macros :as asyncm :refer (go)]
+                     [schema.macros :as macros]
                      [schema.core])
     (:require #_[schema.core :as s]
               [cljsjs.three]
               #_[cljsjs.gl-matrix]
               #_[cljsjs.d3]
-              [frereth.repl :as repl]))
+              [frereth.repl :as repl]
+              [taoensso.sente :as sente :refer (cb-success?)]))
 (enable-console-print!)
 
 (println "Top of core")
@@ -23,6 +25,16 @@
            (println (.str js/vec3 v1)
                     "+" (.str js/vec3 v2)
                     "=" (.str js/vec3 v3))))
+
+(defn client-sock
+  []
+  (let [{:keys [chsk ch-recv send-fn state]}
+        (sente/make-channel-socket! "/chsk"  ; Note path to request-handler on server
+                                    {:type :auto})]
+    {:socket chsk
+     :recv-chan ch-recv
+     :send! send-fn
+     :state state}))
 
 (defn start-3
   [THREE]
@@ -54,6 +66,7 @@
 
 (repl/start)
 (start-3 js/THREE)
+(swap! app-state  assoc current :channel-socket (client-sock))
 
 (defn reflect  ; :- {s/Keyword s/Any}
   "TODO: This doesn't belong here. But it's probably a better

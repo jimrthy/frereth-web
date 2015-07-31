@@ -5,6 +5,8 @@
             [fnhouse.docs :as docs]
             [fnhouse.handlers :as handlers]
             [fnhouse.routes :as routes]
+            [fnhouse.schemas :as fn-schemas]
+            [com.frereth.common.schema :as fr-skm]
             [com.frereth.common.util :as util]
             [com.frereth.client.communicator :as comms]
             [com.frereth.web.routes.v1]  ; Just so it gets compiled, so fnhouse can find it
@@ -14,6 +16,7 @@
             ;; TODO: Make use of those
             [ring.middleware.content-type :refer (wrap-content-type)]
             [ring.middleware.format :refer (wrap-restful-format)]
+            [ring.middleware.keyword-params :refer (wrap-keyword-params)]
             ;; TODO: Look into wrap-multipart-params middleware.
             ;; Uploading files is definitely one of the major required
             ;; features.
@@ -23,6 +26,8 @@
             [ring.middleware.stacktrace :refer (wrap-stacktrace)]
             [ring.util.response :as response]
             [schema.core :as s]
+            [taoensso.sente :as sente]
+            [taoensso.sente.server-adapters.immutant :refer (sente-web-server-adapter)]
             [taoensso.timbre :as log])
   (:import [clojure.lang IPersistentMap ISeq]
            [com.frereth.client.communicator ServerSocket]
@@ -35,31 +40,6 @@
 (def StandardDescription {})
 (def StandardCtorDescription {:http-router StandardDescription})
 (def WebSocketDescription {})
-
-(declare return-index wrapped-root-handler)
-;;; This wouldn't be worthy of any sort of existence outside
-;;; the web server (until possibly it gets complex), except that
-;;; the handlers are going to need access to the Connection
-(s/defrecord HttpRoutes [frereth-client :- ServerSocket
-                         ;; This is a function that takes 1
-                         ;; arg and returns a Ring response.
-                         ;; TODO: Spec that schema
-                         http-router]
-  component/Lifecycle
-  (start
-   [this]
-   (assoc this :http-router (wrapped-root-handler this)))
-  (stop
-   [this]
-   (assoc this :http-router nil)))
-
-(def UnstartedHttpRoutes (assoc StandardDescription
-                                :http-router s/Any
-                                :frereth-client s/Any))
-
-(def HttpRouteMap
-  "Map of route prefix to the namespace where the handler should live"
-  {s/Str s/Symbol})
 
 (def RingRequest
   "What the spec says we shall use"
@@ -88,6 +68,55 @@
                            (s/optional-key :body) LegalRingResponseBody})
 
 (def HttpRequestHandler (s/=> RingResponse RingRequest))
+
+(def channel-socket
+  {:ring-ajax-post HttpRequestHandler
+   :ring-ajax-get-or-ws-handshake HttpRequestHandler
+   :receive-chan fr-skm/async-channel
+   :send! (s/=> s/Any)
+   :connected-uids fr-skm/atom-type})
+
+(declare make-channel-socket wrapped-root-handler)
+;;; This wouldn't be worthy of any sort of existence outside
+;;; the web server (until possibly it gets complex), except that
+;;; the handlers are going to need access to the Connection
+(s/defrecord HttpRoutes [ch-sock :- channel-socket
+                         frereth-client :- ServerSocket
+                         http-router :- HttpRequestHandler]
+  component/Lifecycle
+  (start
+   [this]
+   (let [ch-sock (or ch-sock
+                     ;; This brings up an important question:
+                     ;; how (if at all) does the web socket handler
+                     ;; interact with the "normal" HTTP handlers?
+                     ;; It seems like there is a lot of ripe fruit for
+                     ;; the plucking here.
+                     ;; TODO: Pick an initial approach.
+                     ;; Probably shouldn't create either in here.
+                     ;; This is really just for the sake of wiring
+                     ;; together all the communications pieces with
+                     ;; whatever dependencies may be involved.
+                     (make-channel-socket))]
+     (assoc this
+            :http-router (wrapped-root-handler this)
+            :ch-sock ch-sock)))
+  (stop
+   [this]
+   (assoc this
+          :http-router nil
+          :ch-sock nil)))
+
+(def UnstartedHttpRoutes
+  "Q: Where is this used?"
+  (assoc StandardDescription
+         :http-router s/Any
+         :frereth-client s/Any))
+
+(def http-route-map
+  "Copy/pasted directly from fnhouse"
+  {(s/named s/Str "path prefix")
+   (s/named s/Symbol "namespace")})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -118,8 +147,8 @@
      :status 404
      :headers {"Content-Type" "text/html"}}))
 
-(defn index-middleware
-  [handler]
+(s/defn ^:always-validate index-middleware :- HttpRequestHandler
+  [handler :- HttpRequestHandler]
   (fn [req]
     (let [path (:uri req)]
       (log/debug "Requested:" path)
@@ -133,6 +162,19 @@
         ;; one. The same resource handler that's getting my
         ;; cljs should be able to cope with this.
         (return-index)
+        (handler req)))))
+
+(s/defn ^:always-validate wrap-sente-middleware :- HttpRequestHandler
+  [handler :- HttpRequestHandler
+   chsk :- channel-socket]
+  (fn [req]
+    (let [path (:uri req)]
+      (if (= path "/chsk")
+        (let [method (:request-method req)]
+          (condp = method
+            :get ((:ring-ajax-get-or-ws-handshake chsk) req)
+            :post ((:ring-ajax-post) req)
+            (raise {:not-implemented 404})))
         (handler req)))))
 
 (s/defn debug-middleware :- HttpRequestHandler
@@ -155,17 +197,23 @@ TODO: Should probably save it so we can examine later"
   (-> handler
       debug-middleware  ; TODO: Only in debug mode
       wrap-stacktrace   ; TODO: Also just in debug mode
-      (wrap-restful-format :formats [:edn :json-kw :yaml-kw :transit-json :transit-msgpack])
+      ;; TODO: Should probably just be using ring.middleware.defualts
+      #_(wrap-restful-format :formats [:edn :json-kw :yaml-kw :transit-json :transit-msgpack])
+      ;; These next two are absolutely required by sente
+      wrap-keyword-params
       wrap-params  ; Q: How does this interact w/ wrap-restful-format?
       (wrap-resource "public")
       (wrap-content-type)
       (wrap-not-modified)))
 
-(s/defn attach-docs
+(s/defn attach-docs :- (s/=> fn-schemas/API handlers/Resources)
   "This is really where the fnhouse magic happens
-TODO: Spec return type"
+It's almost exactly the same as handlers/nss->handlers-fn
+The only difference seems to be attaching extra documentation pieces to the chain
+
+TODO: What does that gain me?"
   [component :- HttpRoutes
-   route-map :- HttpRouteMap]
+   route-map :- http-route-map]
   (let [proto-handlers (handlers/nss->proto-handlers route-map)
         all-docs (docs/all-docs (map :info proto-handlers))]
     (-> component
@@ -176,7 +224,7 @@ TODO: Spec return type"
   "Convert the fnhouse routes defined in route-map to actual route handlers,
 making the component available as needed"
   [component :- HttpRoutes
-   route-map :- HttpRouteMap]
+   route-map :- http-route-map]
   (let [routes-with-documentation (attach-docs component route-map)
         ;; TODO: if there's middleware to do coercion, add it here
         ]
@@ -187,7 +235,18 @@ making the component available as needed"
   [component :- HttpRoutes]
   (-> (fnhouse-handling component {"v1" 'com.frereth.web.routes.v1})
       index-middleware
+      (wrap-sente-middleware (:ch-sock component))
       wrap-standard-middleware))
+
+(s/defn make-channel-socket  :- channel-socket
+  []
+  (let [{:keys [ ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
+        (sente/make-channel-socket! sente-web-server-adapter {})]
+    {:ring-ajax-post ajax-post-fn
+     :ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn
+     :receive-chan ch-recv  ; ChannelSocket's receive channel
+     :send! send-fn  ; ChannelSocket's send API fn
+     :connected-uids  connected-uids}))    ; Watchable, read-only atom
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

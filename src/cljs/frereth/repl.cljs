@@ -1,11 +1,13 @@
 (ns frereth.repl
   "The absolte dumbest REPL implementation that I've been able to dream up"
-  (:require-macros [cljs.core.async.macros :refer [go]])
+  (:require-macros [cljs.core.async.macros :as asyncm :refer [go]]
+                   [schema.macros :as macros]
+                   [schema.core :as s])
   (:require #_[cljs.js :as compiler]
             [cljs.core.async :refer [put! <!] :as async]
             [om.core :as om]
             [om.dom :as dom]
-            #_[schema.core :as s :include-macros true]))
+            #_[schema.core :as s]))
 
 (enable-console-print!)
 
@@ -25,8 +27,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Component Handlers
 
-(defn stripe
-  [txt bgc]
+(s/defn stripe
+  [txt :- s/Str
+   bgc :- s/Str]
   (let [style #js {:backgroundColor bgc}]
     (println "Printing\n" txt "\n in " bgc)
     (dom/li #js {:style style} (str txt))))

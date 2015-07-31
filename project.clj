@@ -84,7 +84,7 @@
                  #_[cider/cider-nrepl "0.9.1"]  ; definitely should not need to do this
                  ;; Really should inherit my clojure version from this.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
-                 [com.taoensso/sente "1.4.1" :exclusions [org.clojure/clojure
+                 [com.taoensso/sente "1.5.0" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
                  [figwheel "0.3.5" :exclusions [cider/cider-nrepl
