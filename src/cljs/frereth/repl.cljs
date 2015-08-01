@@ -3,7 +3,7 @@
   (:require-macros [cljs.core.async.macros :as asyncm :refer [go]]
                    [schema.macros :as macros]
                    [schema.core :as s])
-  (:require #_[cljs.js :as compiler]
+  (:require [cljs.js :as cljs]
             [cljs.core.async :refer [put! <!] :as async]
             [frereth.globals :as global]
             [om.core :as om]
@@ -25,8 +25,8 @@
   [txt
    bgc]
   (let [style #js {:backgroundColor bgc}]
-    (println "Printing\n" txt "\n in " bgc)
-    (dom/li #js {:style style} (str txt))))
+    (comment (println "Printing\n" txt "\n in " bgc))
+    (dom/li #js {:style style} (pr-str txt))))
 
 (defn printer
   [output owner]
@@ -50,11 +50,13 @@
    (render
     [_]
     (println "Rendering: " output " a " (type output))
-    (dom/tr nil
-            (dom/td #js {:style table-style}
-                    (apply dom/ul nil
-                           (map stripe
-                                output (cycle ["#ff0" "#fff"]))))))
+    (let [table-style #js {:border "1px solid green;"}]
+      (dom/tr nil
+              ;; Q: How do I make this scrollable?
+              (dom/td #js {:style table-style}
+                      (apply dom/ul nil
+                             (map stripe
+                                  output (cycle ["#ff0" "#fff"])))))))
    om/IWillUnmount
    (will-unmount
     [_]
@@ -94,6 +96,38 @@
                       :value "Eval!"}
                  nil)))))
 
+(defn evaluate
+  [data forms]
+  (println "Getting ready to evaluate:\n" forms)
+  (let [state (get-in @global/app-state [:repls 0 :state])]
+    ;; The nesting makes this more complex than needed
+    ;; TODO: Really need wrap the different repls into a build-all.
+    (cljs/eval-str state
+                   forms
+                   ;; TODO: Need to assign something meaningful
+                   "Name this"
+                   {:context :expr  ; documented legal values are :expr, :statement, and :return
+                                        ; documentation doesn't provide any hints about meaning
+                    :def-emits-var true
+                    :eval cljs/js-eval
+                    :ns (get-in data [:repls 0 :namespace])
+                    :source-map true
+                    :verbose true}
+                   (fn [{:keys [error ns value] :as res}]
+                     (println "Evaluation returned:" (pr-str res))
+                     (when [ns]
+                       ;; Q: Why isn't this updating the textbox?
+                       ;; I don't really care all that much, but it's annoying.
+                       (om/transact! data [:repls 0 :namespace]
+                                     (fn [_]
+                                       (println "Latest namespace: " ns)
+                                       ns)))
+                     ;; TODO: If this wasn't an error, clear the text box
+                     (let [response (or error value)]
+                       (om/transact! data [:repls 0 :output]
+                                     (fn [xs]
+                                       (conj xs forms response))))))))
+
 (defn repl-wrapper
   [data owner]
   (reify
@@ -103,17 +137,20 @@
     om/IWillMount
     (will-mount
      [_]
+     (swap! global/app-state
+            (fn [current]
+              (assoc-in current [:repls 0 :state] (cljs/empty-state))))
+
      ;; It seems as though this is what should handle
      ;; the channel creation. Since there doesn't seem
      ;; to be a better place to close! it than IWillUnmount
+     ;; But that's state that needs to be passed along
+     ;; to children. So that belongs there, while this
+     ;; belongs here.
      (let [evaluator (om/get-state owner :evaluator)]
        (go (loop []
              (when-let [forms (<! evaluator)]
-               ;; TODO: evaluate forms. Do this update inside the
-               ;; callback of the evaluation instead
-               (om/transact! data [:repls 0 :output]
-                             (fn [xs]
-                               (conj xs forms))))
+               (evaluate data forms))
              (recur)))))
     om/IRenderState
     (render-state

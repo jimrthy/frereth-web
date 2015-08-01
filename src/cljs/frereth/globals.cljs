@@ -5,6 +5,7 @@
 (defonce app-state (atom {:text "Waiting for initial Connection to Client",
                           :compiler-state (comment (compiler/empty-state))
                           :repls [{:heading "Local"
-                                   :output [:a :b :c]
+                                   :output []
                                    :input "=>"
-                                   :namespace "user"}]}))
+                                   :namespace "user"
+                                   :state nil}]}))
