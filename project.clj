@@ -67,14 +67,7 @@
                  [cljsjs/three "0.0.70-0"]
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
-                 ;; TODO: This is up to 0.0-3308.
-                 ;; But figwheel's documented to work with this version.
-                 ;; So start here.
-                 #_[org.clojure/clojurescript "0.0-3211" :exclusions [org.clojure/clojure
-                                                                      org.clojure/tools.reader]]
-                 #_[org.clojure/clojurescript "0.0-3308" :exclusions [org.clojure/clojure
-                                                                      org.clojure/tools.reader]]
-                 [org.clojure/clojurescript "0.0-SNAPSHOT" :exclusions [org.clojure/clojure
+                 [org.clojure/clojurescript "1.7.28" :exclusions [org.clojure/clojure
                                                                         org.clojure/tools.reader]]
                  [org.omcljs/om "0.8.8" :exclusions [org.clojure/clojure]]
                  [secretary "1.2.3" :exclusions [org.clojure/clojure

@@ -1,40 +1,59 @@
 (ns ^:figwheel-always frereth.core
     "TODO: Do something interesting here"
-    (:require-macros [cljs.core.async.macros :as asyncm :refer (go)]
+    (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
                      [schema.macros :as macros]
                      [schema.core])
-    (:require #_[schema.core :as s]
+    (:require [cljs.core.async :as async]
               [cljsjs.three]
               #_[cljsjs.gl-matrix]
               #_[cljsjs.d3]
+              [frereth.globals :as global]
               [frereth.repl :as repl]
+               #_[schema.core :as s]
               [taoensso.sente :as sente :refer (cb-success?)]))
 (enable-console-print!)
 
 (println "Top of core")
 
-  ;; define your app data so that it doesn't get over-written on reload
-
-
-(defonce app-state (atom {:text "Hello from cljsjs!"}))
-
-(comment (let [v1 (.fromValues js/vec3 1 10 100)
-               v2 (.fromValues js/vec3 1 1 1)
-               v3 (.create js/vec3)]
-           (.add js/vec3 v3 v1 v2)
-           (println (.str js/vec3 v1)
-                    "+" (.str js/vec3 v2)
-                    "=" (.str js/vec3 v3))))
+(defn event-handler
+  [socket-description]
+  (let [done (atom false)
+        recv (:recv-chan socket-description)]
+    (go-loop []
+      (let [[incoming ch] (async/alts! [(async/timeout (* 1000 60 5)) recv])]
+        (if (= recv ch)
+          (do
+            (println "Incoming message:\n" (:event incoming))
+            (when-not incoming
+              (println "Channel closed. We're done here")
+              (reset! done true)))
+          (do
+            (println "Background Async WS Loop: Heartbeat"))))
+      (when-not @done
+        (recur)))))
 
 (defn client-sock
   []
+  (println "Building client connection")
   (let [{:keys [chsk ch-recv send-fn state]}
         (sente/make-channel-socket! "/chsk"  ; Note path to request-handler on server
                                     {:type :auto})]
-    {:socket chsk
-     :recv-chan ch-recv
-     :send! send-fn
-     :state state}))
+    (println "Client connection built")
+    (let [result {:socket chsk
+                  :recv-chan ch-recv
+                  :send! send-fn
+                  :state state}]
+      (go
+        (let [[handshake-response ch] (async/alts! [(async/timeout 5000) ch-recv])]
+          (if (= ch ch-recv)
+            (do
+              (if-let [event (:event handshake-response)]
+                (let [[kind body] event]
+                  (println "Initial socket response:\n\t" kind
+                           "\n\t" body)
+                  (event-handler result))))
+            (println "Timed out waiting for server response"))))
+      result)))
 
 (defn start-3
   [THREE]
@@ -54,6 +73,7 @@
           renderer (THREE.WebGLRenderer.)]
       (.add scene mesh)
       (.setSize renderer (.-innerWidth js/window) (.-innerHeight js/window))
+      ;; Q: How do I position this over the REPL?
       (.appendChild (.-body js/document) (.-domElement renderer))
       (letfn [(render []
                       (set! (.-x (.-rotation mesh)) (+ (.-x (.-rotation mesh)) 0.01))
@@ -64,23 +84,24 @@
                        (render))]
         (animate)))))
 
-(repl/start)
-(start-3 js/THREE)
-(swap! app-state  assoc current :channel-socket (client-sock))
+(defn channel-swapper
+  [current latest]
+  (when-let [existing-ws-channel (:channel-socket current)]
+    (let [receiver (:recv-chan existing-ws-channel)]
+      (async/close! receiver)))
+  (assoc current :channel-socket latest))
 
-(defn reflect  ; :- {s/Keyword s/Any}
-  "TODO: This doesn't belong here. But it's probably a better
-location than common.clj where I was storing it.
-It's tempting to change that to common.cljc, but I'm not
-sure there's enough cross-platform functionality to make that
-worthwhile.
+(defn start-graphics
+  "TODO: Add a 2-D canvas HUD"
+  [THREE]
+  (start-3 THREE))
 
-Return a clojurescript map version of a javascript object
-It seems like js->clj should already handle this, but
-I haven't had very good luck with it"
-  [o]
-  (let [props (.keys js/Object o)]
-    (reduce (fn [acc prop]
-              (assoc acc (keyword prop) (aget o prop)))
-            {}
-            props)))
+(defn -main
+  []
+  (repl/start)
+  (start-graphics js/THREE)
+  (swap! global/app-state  channel-swapper (client-sock)))
+;; Because I'm not sure how to trigger this on a page reload
+;; Really just for scaffolding: I won't want to do this after I'm
+;; confident about setup/teardown
+(-main)

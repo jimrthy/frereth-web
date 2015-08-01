@@ -97,10 +97,11 @@
                      ;; This is really just for the sake of wiring
                      ;; together all the communications pieces with
                      ;; whatever dependencies may be involved.
-                     (make-channel-socket))]
-     (assoc this
-            :http-router (wrapped-root-handler this)
-            :ch-sock ch-sock)))
+                     (make-channel-socket))
+         has-web-sock (assoc this
+                             :ch-sock ch-sock)]
+     (assoc has-web-sock
+            :http-router (wrapped-root-handler has-web-sock))))
   (stop
    [this]
    (assoc this
@@ -110,6 +111,7 @@
 (def UnstartedHttpRoutes
   "Q: Where is this used?"
   (assoc StandardDescription
+         :ch-sock (s/maybe channel-socket)
          :http-router s/Any
          :frereth-client s/Any))
 
@@ -168,14 +170,19 @@
   [handler :- HttpRequestHandler
    chsk :- channel-socket]
   (fn [req]
+    ;; Verified: We are getting here
+    (comment (log/debug "Sente middleware wrapper:\nRequest:" req))
     (let [path (:uri req)]
       (if (= path "/chsk")
         (let [method (:request-method req)]
+          (log/debug "Kicking off web socket interaction!")
           (condp = method
             :get ((:ring-ajax-get-or-ws-handshake chsk) req)
             :post ((:ring-ajax-post) req)
             (raise {:not-implemented 404})))
-        (handler req)))))
+        (do
+          (log/debug "Sente middleware: just passing along request to" path)
+          (handler req))))))
 
 (s/defn debug-middleware :- HttpRequestHandler
   "Log the request as it comes in.
@@ -198,6 +205,12 @@ TODO: Should probably save it so we can examine later"
       debug-middleware  ; TODO: Only in debug mode
       wrap-stacktrace   ; TODO: Also just in debug mode
       ;; TODO: Should probably just be using ring.middleware.defualts
+      ;; From the sente example project:
+      #_(let [ring-defaults-config
+            (assoc-in ring.middleware.defaults/site-defaults [:security :anti-forgery]
+                      {:read-token (fn [req]
+                                     (-> req :params :csrf-token))})]
+        (ring.middleware.defaults/wrap-defaults route-globals ring-defaults-config))
       #_(wrap-restful-format :formats [:edn :json-kw :yaml-kw :transit-json :transit-msgpack])
       ;; These next two are absolutely required by sente
       wrap-keyword-params

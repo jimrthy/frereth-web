@@ -5,6 +5,7 @@
                    [schema.core :as s])
   (:require #_[cljs.js :as compiler]
             [cljs.core.async :refer [put! <!] :as async]
+            [frereth.globals :as global]
             [om.core :as om]
             [om.dom :as dom]
             #_[schema.core :as s]))
@@ -17,19 +18,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(defonce app-state (atom {:text "Om up and running",
-                          :compiler-state (comment (compiler/empty-state))
-                          :repls [{:heading "Local"
-                                   :output [:a :b :c]
-                                   :input "=>"
-                                   :namespace "user"}]}))
-
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Component Handlers
 
-(s/defn stripe
-  [txt :- s/Str
-   bgc :- s/Str]
+(defn stripe
+  [txt
+   bgc]
   (let [style #js {:backgroundColor bgc}]
     (println "Printing\n" txt "\n in " bgc)
     (dom/li #js {:style style} (str txt))))
@@ -159,5 +153,5 @@
   []
   (om/root
    repl-wrapper
-   app-state
+   global/app-state
    {:target (. js/document (getElementById "everything"))}))
