@@ -2,7 +2,9 @@
   "Flag for marking everything complete
 
   Mainly so background threads can exit and let the
-  container's GC handle permgen"
+  container's GC handle permgen
+
+  TODO: Rename this something less grandiose. Like `done`"
   (:require [com.stuartsierra.component :as component]
             [schema.core :as s]))
 

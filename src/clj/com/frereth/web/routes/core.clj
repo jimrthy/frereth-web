@@ -257,8 +257,20 @@ making the component available as needed"
         (sente/make-channel-socket! sente-web-server-adapter {})]
     {:ring-ajax-post ajax-post-fn
      :ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn
-     :receive-chan ch-recv  ; ChannelSocket's receive channel
-     :send! send-fn  ; ChannelSocket's send API fn
+     ;; ChannelSocket's receive channel
+     ;; This is half of the server-side magic:
+     ;; Messages from clients will show up here
+     ;; The docs are confusing about this. It looks like
+     ;; the incoming messages follow the form:
+     ;; {:event _ :send-fn _ :?reply-fn _ :ring-req _}
+     ;; Whereas the client is responsible for sending
+     ;; {:event _ :send-fn _ & args}
+
+     :receive-chan ch-recv
+     ;; ChannelSocket's send API fn
+     ;; This is the other half of the server-side magic.
+     ;; Its parameters are [user-id event]
+     :send! send-fn
      :connected-uids  connected-uids}))    ; Watchable, read-only atom
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
