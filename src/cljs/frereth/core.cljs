@@ -18,10 +18,12 @@
         recv (:recv-chan socket-description)]
     (go
       (loop []
+        (println "Top of websocket event handling loop")
         (let [[incoming ch] (async/alts! [(async/timeout (* 1000 60 5)) recv])]
           (if (= recv ch)
             (do
-              (println "Incoming message:\n" (:event incoming))
+              (println "Incoming message:\n" (:event incoming)
+                       "\nTODO: Handle it")
               (when-not incoming
                 (println "Channel closed. We're done here")
                 (reset! done true)))
@@ -42,6 +44,11 @@
                   :recv-chan ch-recv
                   :send! send-fn
                   :state state}]
+      ;; It's tempting to switch to sente's start-chsk-router!
+      ;; But this half is working, so it doesn't seem worthwhile
+      ;; OTOH, deleting code in favor of something standard that
+      ;; other are using/testing usually
+      ;; is a great improvement
       (go
         (let [[handshake-response ch] (async/alts! [(async/timeout 5000) ch-recv])]
           (if (= ch ch-recv)
@@ -68,6 +75,7 @@
   (three/start-graphics js/THREE)
   (swap! global/app-state  channel-swapper (client-sock)))
 ;; Because I'm not sure how to trigger this on a page reload
+;; (there's a built-in figwheel method precisely for this)
 ;; Really just for scaffolding: I won't want to do this after I'm
 ;; confident about setup/teardown
 (-main)

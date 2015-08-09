@@ -1,15 +1,18 @@
 (ns com.frereth.web.routes.core
   "Why is mapping HTTP end-points to handlers so contentious?"
-  (:require [clojure.java.io :as io]
+  (:require [clojure.core.async :as async]
+            [clojure.java.io :as io]
+            [com.frereth.common.schema :as fr-skm]
+            [com.frereth.common.util :as util]
+            [com.frereth.client.communicator :as comms]
+            [com.frereth.web.routes.ring :as fr-ring]
+            [com.frereth.web.routes.v1]  ; Just so it gets compiled, so fnhouse can find it
+            [com.frereth.web.routes.websock :as websock]
             [com.stuartsierra.component :as component]
             [fnhouse.docs :as docs]
             [fnhouse.handlers :as handlers]
             [fnhouse.routes :as routes]
             [fnhouse.schemas :as fn-schemas]
-            [com.frereth.common.schema :as fr-skm]
-            [com.frereth.common.util :as util]
-            [com.frereth.client.communicator :as comms]
-            [com.frereth.web.routes.v1]  ; Just so it gets compiled, so fnhouse can find it
             [ribol.core :refer [raise]]
             ;; I have dependencies on several other ring wrappers.
             ;; Esp. anti-forgery, defaults, and headers.
@@ -29,10 +32,7 @@
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.immutant :refer (sente-web-server-adapter)]
             [taoensso.timbre :as log])
-  (:import [clojure.lang IPersistentMap ISeq]
-           [com.frereth.client.communicator ServerSocket]
-           [java.io File InputStream]
-           [java.security.cert X509Certificate]))
+  (:import [com.frereth.client.communicator ServerSocket]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -41,48 +41,21 @@
 (def StandardCtorDescription {:http-router StandardDescription})
 (def WebSocketDescription {})
 
-(def RingRequest
-  "What the spec says we shall use"
-  {:server-port s/Int
-   :server-name s/Str
-   :remote-addr s/Str
-   :uri s/Str
-   ;; From the Ring spec
-   (s/optional-key :query-string) s/Str
-   ;; This is actually added through middleware, but fnhouse
-   ;; requires it
-   :query-params {s/Any s/Any}
-   :scheme (s/enum :http :https)
-   :request-method (s/enum :get :head :options :put :post :delete)
-   (s/optional-key :content-type) s/Str
-   (s/optional-key :content-length) s/Int
-   (s/optional-key :character-encoding) s/Str
-   (s/optional-key :ssl-client-cert) X509Certificate
-   :header {s/Any s/Any}
-   (s/optional-key :body) InputStream})
-
-(def LegalRingResponseBody  (s/either s/Str [s/Any] File InputStream IPersistentMap ISeq))
-
-(s/defschema RingResponse {:status s/Int
-                           :headers {s/Any s/Any}
-                           (s/optional-key :body) LegalRingResponseBody})
-
-(def HttpRequestHandler (s/=> RingResponse RingRequest))
-
 (def channel-socket
-  {:ring-ajax-post HttpRequestHandler
-   :ring-ajax-get-or-ws-handshake HttpRequestHandler
+  {:ring-ajax-post fr-ring/HttpRequestHandler
+   :ring-ajax-get-or-ws-handshake fr-ring/HttpRequestHandler
    :receive-chan fr-skm/async-channel
    :send! (s/=> s/Any)
    :connected-uids fr-skm/atom-type})
 
-(declare make-channel-socket wrapped-root-handler)
+(declare make-channel-socket reset-web-socket-handler! wrapped-root-handler)
 ;;; This wouldn't be worthy of any sort of existence outside
 ;;; the web server (until possibly it gets complex), except that
 ;;; the handlers are going to need access to the Connection
 (s/defrecord HttpRoutes [ch-sock :- channel-socket
                          frereth-client :- ServerSocket
-                         http-router :- HttpRequestHandler]
+                         http-router :- fr-ring/HttpRequestHandler
+                         ws-router :- fr-skm/async-channel]
   component/Lifecycle
   (start
    [this]
@@ -98,32 +71,40 @@
                      ;; together all the communications pieces with
                      ;; whatever dependencies may be involved.
                      (make-channel-socket))
+         web-sock-router (reset-web-socket-handler! ws-router ch-sock)
          has-web-sock (assoc this
-                             :ch-sock ch-sock)]
+                             :ch-sock ch-sock
+                             :ws-router web-sock-router)]
      (assoc has-web-sock
             :http-router (wrapped-root-handler has-web-sock))))
   (stop
    [this]
+   (when ws-router
+     (async/close! ws-router))
    (assoc this
+          :ch-sock nil
           :http-router nil
-          :ch-sock nil)))
+          :ws-router nil)))
 
 (def UnstartedHttpRoutes
   "Q: Where is this used?"
   (assoc StandardDescription
          :ch-sock (s/maybe channel-socket)
          :http-router s/Any
-         :frereth-client s/Any))
+         :frereth-client s/Any
+         :ws-router (s/maybe channel-socket)))
 
 (def http-route-map
-  "Copy/pasted directly from fnhouse"
+  "This defines the mapping between URL prefixes and the
+namespaces where the appropriate route handlers live.
+Copy/pasted directly from fnhouse."
   {(s/named s/Str "path prefix")
    (s/named s/Symbol "namespace")})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(defn return-index
+(s/defn return-index :- s/Str
   "Because there are a ton of different ways to try to access the root of a web app"
   []
   (if-let [url (io/resource "public/index.html")]
@@ -149,8 +130,8 @@
      :status 404
      :headers {"Content-Type" "text/html"}}))
 
-(s/defn ^:always-validate index-middleware :- HttpRequestHandler
-  [handler :- HttpRequestHandler]
+(s/defn ^:always-validate index-middleware :- fr-ring/HttpRequestHandler
+  [handler :- fr-ring/HttpRequestHandler]
   (fn [req]
     (let [path (:uri req)]
       (log/debug "Requested:" path)
@@ -166,8 +147,8 @@
         (return-index)
         (handler req)))))
 
-(s/defn ^:always-validate wrap-sente-middleware :- HttpRequestHandler
-  [handler :- HttpRequestHandler
+(s/defn ^:always-validate wrap-sente-middleware :- fr-ring/HttpRequestHandler
+  [handler :- fr-ring/HttpRequestHandler
    chsk :- channel-socket]
   (fn [req]
     ;; Verified: We are getting here
@@ -178,19 +159,19 @@
           (log/debug "Kicking off web socket interaction!")
           (condp = method
             :get ((:ring-ajax-get-or-ws-handshake chsk) req)
-            :post ((:ring-ajax-post) req)
+            :post ((:ring-ajax-post chsk) req)
             (raise {:not-implemented 404})))
         (do
           (log/debug "Sente middleware: just passing along request to" path)
           (handler req))))))
 
-(s/defn debug-middleware :- HttpRequestHandler
+(s/defn debug-middleware :- fr-ring/HttpRequestHandler
   "Log the request as it comes in.
 
 TODO: Should probably save it so we can examine later"
-  [handler :- HttpRequestHandler]
-  (s/fn :- RingResponse
-    [req :- RingRequest]
+  [handler :- fr-ring/HttpRequestHandler]
+  (s/fn :- fr-ring/RingResponse
+    [req :- fr-ring/RingRequest]
     (log/debug "Incoming Request:\n" (util/pretty req))
     (handler req)))
 
@@ -251,10 +232,23 @@ making the component available as needed"
       (wrap-sente-middleware (:ch-sock component))
       wrap-standard-middleware))
 
+(s/defn reset-web-socket-handler! :- (s/=> s/Any)
+  "Replaces the existing web-socket-handler (aka router)
+(if any) with a new one, built around ch-sock.
+Returns a function for closing
+the event loop (which should be returned in the next
+call as the next stop-fn)"
+  [stop-fn :- (s/=> s/Any)
+   ch-sock :- fr-skm/async-channel]
+  (when stop-fn
+    (stop-fn))
+  (sente/start-chsk-router! ch-sock websock/event-handler))
+
 (s/defn make-channel-socket  :- channel-socket
   []
   (let [{:keys [ ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
         (sente/make-channel-socket! sente-web-server-adapter {})]
+
     {:ring-ajax-post ajax-post-fn
      :ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn
      ;; ChannelSocket's receive channel
@@ -275,6 +269,18 @@ making the component available as needed"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(s/defn broadcast!
+  [router :- HttpRoutes
+   msg :- s/Any]
+  (let [ch-sock (:ch-sock router)
+        uids (-> ch-sock :connected-uids deref :any)
+        send! (:send! ch-sock)]
+    (doseq [uid uids]
+      (send! uid msg))))
+(comment (broadcast!
+          (:http-router dev/system)
+          [:frereth/ping nil]))
 
 (s/defn ^:always-validate ctor :- UnstartedHttpRoutes
   [_ :- StandardDescription]
