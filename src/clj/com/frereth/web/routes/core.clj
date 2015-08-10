@@ -14,17 +14,16 @@
             [fnhouse.routes :as routes]
             [fnhouse.schemas :as fn-schemas]
             [ribol.core :refer [raise]]
-            ;; I have dependencies on several other ring wrappers.
-            ;; Esp. anti-forgery, defaults, and headers.
-            ;; TODO: Make use of those
+            ;; Q: Am I getting the ring header middleware with this group?
             [ring.middleware.content-type :refer (wrap-content-type)]
+            [ring.middleware.defaults]
             [ring.middleware.format :refer (wrap-restful-format)]
-            [ring.middleware.keyword-params :refer (wrap-keyword-params)]
+            #_[ring.middleware.keyword-params :refer (wrap-keyword-params)]
             ;; TODO: Look into wrap-multipart-params middleware.
             ;; Uploading files is definitely one of the major required
             ;; features.
             [ring.middleware.not-modified :refer (wrap-not-modified)]
-            [ring.middleware.params :refer (wrap-params)]
+            #_[ring.middleware.params :refer (wrap-params)]
             [ring.middleware.resource :refer (wrap-resource)]
             [ring.middleware.stacktrace :refer (wrap-stacktrace)]
             [ring.util.response :as response]
@@ -53,12 +52,19 @@
 ;;; the web server (until possibly it gets complex), except that
 ;;; the handlers are going to need access to the Connection
 (s/defrecord HttpRoutes [ch-sock :- channel-socket
+                         ws-controller :- fr-skm/async-channel
                          frereth-client :- ServerSocket
+                         ;; This record winds up in the system as
+                         ;; the http-router. It's confusing for it
+                         ;; to have another.
+                         ;; TODO: change one name or the other
                          http-router :- fr-ring/HttpRequestHandler
-                         ws-router :- fr-skm/async-channel]
+                         ws-stopper :- (s/=> s/Any)]
   component/Lifecycle
   (start
    [this]
+   (when ws-controller
+     (async/close! ws-controller))
    (let [ch-sock (or ch-sock
                      ;; This brings up an important question:
                      ;; how (if at all) does the web socket handler
@@ -71,20 +77,27 @@
                      ;; together all the communications pieces with
                      ;; whatever dependencies may be involved.
                      (make-channel-socket))
-         web-sock-router (reset-web-socket-handler! ws-router ch-sock)
+         ws-controller (async/chan)
+         web-sock-stopper (reset-web-socket-handler! ws-stopper ch-sock ws-controller)
          has-web-sock (assoc this
                              :ch-sock ch-sock
-                             :ws-router web-sock-router)]
+                             :ws-controller ws-controller
+                             :ws-stopper web-sock-stopper)]
      (assoc has-web-sock
             :http-router (wrapped-root-handler has-web-sock))))
   (stop
    [this]
-   (when ws-router
-     (async/close! ws-router))
+   (log/debug "Closing the ws-controller channel")
+   (when ws-controller (async/close! ws-controller))
+   (log/debug "Calling ws-stopper...which should be redundant")
+   (when ws-stopper
+     (ws-stopper))
+   (log/debug "HTTP Router should be stopped")
    (assoc this
           :ch-sock nil
           :http-router nil
-          :ws-router nil)))
+          :ws-controller nil
+          :ws-stopper nil)))
 
 (def UnstartedHttpRoutes
   "Q: Where is this used?"
@@ -92,7 +105,8 @@
          :ch-sock (s/maybe channel-socket)
          :http-router s/Any
          :frereth-client s/Any
-         :ws-router (s/maybe channel-socket)))
+         :ws-controller (s/maybe fr-skm/async-channel)
+         :ws-stopper (s/maybe channel-socket)))
 
 (def http-route-map
   "This defines the mapping between URL prefixes and the
@@ -151,8 +165,6 @@ Copy/pasted directly from fnhouse."
   [handler :- fr-ring/HttpRequestHandler
    chsk :- channel-socket]
   (fn [req]
-    ;; Verified: We are getting here
-    (comment (log/debug "Sente middleware wrapper:\nRequest:" req))
     (let [path (:uri req)]
       (if (= path "/chsk")
         (let [method (:request-method req)]
@@ -182,23 +194,30 @@ TODO: Should probably save it so we can examine later"
 
   Take the time to learn and appreciate everything that's going on here."
   [handler]
-  (-> handler
-      debug-middleware  ; TODO: Only in debug mode
-      wrap-stacktrace   ; TODO: Also just in debug mode
-      ;; TODO: Should probably just be using ring.middleware.defualts
-      ;; From the sente example project:
-      #_(let [ring-defaults-config
-            (assoc-in ring.middleware.defaults/site-defaults [:security :anti-forgery]
-                      {:read-token (fn [req]
-                                     (-> req :params :csrf-token))})]
-        (ring.middleware.defaults/wrap-defaults route-globals ring-defaults-config))
-      #_(wrap-restful-format :formats [:edn :json-kw :yaml-kw :transit-json :transit-msgpack])
-      ;; These next two are absolutely required by sente
-      wrap-keyword-params
-      wrap-params  ; Q: How does this interact w/ wrap-restful-format?
-      (wrap-resource "public")
-      (wrap-content-type)
-      (wrap-not-modified)))
+  (let [ring-defaults-config
+        ;; Note that this will [probably] be sitting behind nginx in most
+        ;; scenarios, so should really be using secure-site-defaults with
+        ;; :proxy true (c.f. the ring-defaults README).
+        ;; If only because of the current pain involved with setting up
+        ;; an SSL signing chain, it really isn't feasible to just make that
+        ;; the default.
+        ;; TODO: Need a way to turn that option on.
+        (assoc-in ring.middleware.defaults/site-defaults [:security :anti-forgery]
+                  ;; This is the value recommended in the sente example project
+                  #_{:read-token (fn [req]
+                                   (-> req :params :csrf-token))}
+                  ;; This is the value actually required by ring.defaults
+                  ;; TODO: Create a PR to reflect this
+                  true)]
+    (-> handler
+        debug-middleware  ; TODO: Only in debug mode
+        wrap-stacktrace   ; TODO: Also just in debug mode
+        ;; TODO: Should probably just be using ring.middleware.defualts
+        ;; From the sente example project:
+        (ring.middleware.defaults/wrap-defaults ring-defaults-config)
+        (wrap-resource "public")
+        (wrap-content-type)
+        (wrap-not-modified))))
 
 (s/defn attach-docs :- (s/=> fn-schemas/API handlers/Resources)
   "This is really where the fnhouse magic happens
@@ -232,17 +251,88 @@ making the component available as needed"
       (wrap-sente-middleware (:ch-sock component))
       wrap-standard-middleware))
 
+(s/defn handle-ws-event-loop-msg :- s/Any
+  "Refactored from them middle of the go block
+created by reset-web-socket-handler! so I can
+update on the fly.
+
+Besides, it's much more readable this way"
+  [{:keys [ch rcvr ws-controller]}
+   msg :- s/Any]
+  (if (= ch rcvr)
+    (do
+      (log/debug "Incoming message from a browser")
+       (websock/event-handler msg))
+    (let [responder (:response msg)]
+      (log/debug "Status check")
+      (when-not responder
+        (log/error "Bad status request message. Missing :response in:\n" msg)
+        (assert false))
+      (assert (= ch ws-controller))
+      (async/alts! [(async/timeout 100) [responder :Im-alive]]))))
+
 (s/defn reset-web-socket-handler! :- (s/=> s/Any)
   "Replaces the existing web-socket-handler (aka router)
 (if any) with a new one, built around ch-sock.
 Returns a function for closing
 the event loop (which should be returned in the next
-call as the next stop-fn)"
+call as the next stop-fn)
+
+It's very tempting to try to pretend that this is a pure
+function, but its main point is the side-effects around
+the event loop"
   [stop-fn :- (s/=> s/Any)
-   ch-sock :- fr-skm/async-channel]
-  (when stop-fn
-    (stop-fn))
-  (sente/start-chsk-router! ch-sock websock/event-handler))
+   ch-sock :- fr-skm/async-channel
+   ws-controller :- fr-skm/async-channel]
+  (io!
+   (when stop-fn
+     (stop-fn))
+   (let [stopper (async/chan)
+         rcvr (:receive-chan ch-sock)
+         event-loop
+         (async/go
+           (loop []
+             (log/debug "Top of websocket event loop\n" {:stopper stopper
+                                                         :receiver rcvr
+                                                         :ws-controller ws-controller})
+             (let [t-o (async/timeout (* 1000 60 5))
+                   [v ch] (async/alts! [t-o stopper rcvr ws-controller])]
+               (if v
+                 (do
+                   (handle-ws-event-loop-msg {:ch ch
+                                              :rcvr rcvr
+                                              :ws-controller ws-controller}
+                                             v)
+                   (recur))
+                 (when (= ch t-o)
+                   ;; TODO: Should probably post a heartbeat to the
+                   ;; "real" server here
+                   (log/debug "Websocket event loop heartbeat")
+                   (recur)))))
+           (log/info "Websocket event loop exited"))
+         exit-fn (fn []
+                   (when stopper
+                     (log/debug "Closing the stopper channel as a signal to exit the event loop")
+                     (async/close! stopper)))]
+     exit-fn)))
+
+;; For testing a status request
+;; Wrote it to debug what was going on w/ my
+;; disappearing event loop, then spotted that
+;; problem before I had a chance to test this.
+;; I really think this is/will be useful, but
+;; this version is pretty pointless.
+(comment
+  (let [responder (async/chan)
+        controller (-> dev/system :http-router :ws-controller)
+        [v c] (async/alts!! [(async/timeout 350) [controller {:response responder}]])]
+    (if v
+      (let [[v c] (async/alts!! [(async/timeout 350) responder])]
+        (if v
+          (log/info v)
+          (log/warn "Timed out waiting for a response")))
+      (log/error "Timed out trying to submit status request"))
+    (async/close! responder)))
 
 (s/defn make-channel-socket  :- channel-socket
   []
@@ -271,6 +361,7 @@ call as the next stop-fn)"
 ;;; Public
 
 (s/defn broadcast!
+  "Send message to all attached users"
   [router :- HttpRoutes
    msg :- s/Any]
   (let [ch-sock (:ch-sock router)

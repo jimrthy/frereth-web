@@ -50,15 +50,19 @@
       ;; other are using/testing usually
       ;; is a great improvement
       (go
-        (let [[handshake-response ch] (async/alts! [(async/timeout 5000) ch-recv])]
-          (if (= ch ch-recv)
-            (do
-              (if-let [event (:event handshake-response)]
-                (let [[kind body] event]
-                  (println "Initial socket response:\n\t" kind
-                           "\n\t" body)
-                  (event-handler result))))
-            (println "Timed out waiting for server response"))))
+        (loop [n 5]
+          (when (< 0 n)
+            (let [[handshake-response ch] (async/alts! [(async/timeout 5000) ch-recv])]
+              (if (= ch ch-recv)
+                (do
+                  (if-let [event (:event handshake-response)]
+                    (let [[kind body] event]
+                      (println "Initial socket response:\n\t" kind
+                               "\n\t" body)
+                      (event-handler result))))
+                (do
+                  (println "Timed out waiting for server response")
+                  (recur (dec n))))))))
       result)))
 
 (defn channel-swapper
