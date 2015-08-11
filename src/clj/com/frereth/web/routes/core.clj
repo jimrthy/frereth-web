@@ -31,7 +31,8 @@
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.immutant :refer (sente-web-server-adapter)]
             [taoensso.timbre :as log])
-  (:import [com.frereth.client.communicator ServerSocket]))
+  (:import [com.frereth.client.communicator ServerSocket]
+           [com.frereth.web.routes.websock WebSockHandler]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -51,18 +52,21 @@
 ;;; This wouldn't be worthy of any sort of existence outside
 ;;; the web server (until possibly it gets complex), except that
 ;;; the handlers are going to need access to the Connection
-(s/defrecord HttpRoutes [ch-sock :- channel-socket
-                         ws-controller :- fr-skm/async-channel
-                         frereth-client :- ServerSocket
+(s/defrecord HttpRoutes [ch-sock :- (s/maybe channel-socket)
+                         ws-controller :- (s/maybe fr-skm/async-channel)
+                         frereth-client :- (s/maybe ServerSocket)
                          ;; This record winds up in the system as
                          ;; the http-router. It's confusing for it
                          ;; to have another.
                          ;; TODO: change one name or the other
-                         http-router :- fr-ring/HttpRequestHandler
-                         ws-stopper :- (s/=> s/Any)]
+                         http-router :- (s/maybe fr-ring/HttpRequestHandler)
+                         web-sock-handler :- (s/maybe WebSockHandler)
+                         ws-stopper :- (s/maybe (s/=> s/Any))]
   component/Lifecycle
   (start
    [this]
+   ;; This is one scenario where it doesn't make any sense to try to
+   ;; recycle the previous version
    (when ws-controller
      (async/close! ws-controller))
    (let [ch-sock (or ch-sock
@@ -78,7 +82,7 @@
                      ;; whatever dependencies may be involved.
                      (make-channel-socket))
          ws-controller (async/chan)
-         web-sock-stopper (reset-web-socket-handler! ws-stopper ch-sock ws-controller)
+         web-sock-stopper (reset-web-socket-handler! ws-stopper ch-sock ws-controller web-sock-handler)
          has-web-sock (assoc this
                              :ch-sock ch-sock
                              :ws-controller ws-controller
@@ -99,14 +103,15 @@
           :ws-controller nil
           :ws-stopper nil)))
 
-(def UnstartedHttpRoutes
-  "Q: Where is this used?"
-  (assoc StandardDescription
-         :ch-sock (s/maybe channel-socket)
-         :http-router s/Any
-         :frereth-client s/Any
-         :ws-controller (s/maybe fr-skm/async-channel)
-         :ws-stopper (s/maybe channel-socket)))
+(comment
+  (def UnstartedHttpRoutes
+    "Q: Where is this used?"
+    (assoc StandardDescription
+           :ch-sock (s/maybe channel-socket)
+           :http-router s/Any
+           :frereth-client s/Any
+           :ws-controller (s/maybe fr-skm/async-channel)
+           :ws-stopper (s/maybe channel-socket))))
 
 (def http-route-map
   "This defines the mapping between URL prefixes and the
@@ -257,12 +262,12 @@ created by reset-web-socket-handler! so I can
 update on the fly.
 
 Besides, it's much more readable this way"
-  [{:keys [ch rcvr ws-controller]}
+  [{:keys [ch rcvr web-sock-handler ws-controller]}
    msg :- s/Any]
   (if (= ch rcvr)
     (do
       (log/debug "Incoming message from a browser")
-       (websock/event-handler msg))
+       (websock/event-handler web-sock-handler msg))
     (let [responder (:response msg)]
       (log/debug "Status check")
       (when-not responder
@@ -283,7 +288,8 @@ function, but its main point is the side-effects around
 the event loop"
   [stop-fn :- (s/=> s/Any)
    ch-sock :- fr-skm/async-channel
-   ws-controller :- fr-skm/async-channel]
+   ws-controller :- fr-skm/async-channel
+   web-sock-handler :- WebSockHandler]
   (io!
    (when stop-fn
      (stop-fn))
@@ -301,7 +307,8 @@ the event loop"
                  (do
                    (handle-ws-event-loop-msg {:ch ch
                                               :rcvr rcvr
-                                              :ws-controller ws-controller}
+                                              :ws-controller ws-controller
+                                              :web-sock-handler web-sock-handler}
                                              v)
                    (recur))
                  (when (= ch t-o)
@@ -373,6 +380,6 @@ the event loop"
           (:http-router dev/system)
           [:frereth/ping nil]))
 
-(s/defn ^:always-validate ctor :- UnstartedHttpRoutes
+(s/defn ^:always-validate ctor :- HttpRoutes
   [_ :- StandardDescription]
   (map->HttpRoutes _))

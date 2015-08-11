@@ -89,7 +89,7 @@
                                                         org.clojure/clojure
                                                         org.clojure/clojurescript
                                                         org.clojure/java.classpath]]
-                 [org.clojure/core.match "0.2.2" :exclusions [org.clojure/clojure]]]
+                 [org.clojure/core.match "0.3.0-alpha4" :exclusions [org.clojure/clojure]]]
   :description "Another waffle in my indecision about making this web-based"
 
   :figwheel {
