@@ -3,7 +3,9 @@
 
 Actually, it probably doesn't have to center around
 sente at all."
-  (:require [clojure.core.match :refer [match]]
+  (:require [clojure.core.async :as async]
+            [clojure.core.match :refer [match]]
+            [com.frereth.client.connection-manager :as con-man]
             [com.frereth.common.util :as util]
             [com.frereth.web.routes.ring :as fr-ring]
             [com.stuartsierra.component :as component]
@@ -66,32 +68,43 @@ sente at all."
         (send-fn response))
       (log/error "No way to send the later responses"))))
 
-(s/defn reply
-  [this :- WebSockHandler
-   {:keys [?reply-fn send-fn]}
-   status :- s/Int
-   msg :- s/Str]
-  (let [response {:status status
-                  :body msg}]
+(s/defn ^:always-validate reply
+  [this :- WebSockHandler   ; Q: Will there ever be any reason for this?
+   {:keys [?reply-fn send-fn id]}
+   event-key :- s/Keyword
+   event-data :- s/Any]
+  (let [response [event-key event-data]]
     (if ?reply-fn
       (?reply-fn response)
-      (if send-fn
-        (send-fn response)
-        (log/error "No way to send response:\n" (util/pretty response))))))
+      ;; The id is really the event key. It's useless here.
+      (send-fn id response))))
 
 (s/defn not-found
-  [this :- WebSockHandler]
-  (reply this 404 "Not Found"))
+  [this :- WebSockHandler
+   ev-msg]
+  (reply this ev-msg :http/not-found {:status 404 :body "\"Not Found\""}))
 
 (s/defn forward
   [this :- WebSockHandler
-   msg]
-  ;; Yes, this points out how odd my naming convention is here
-  ;; TODO: Come up with a better alternative.
-  ;; middleware, maybe?
-  (let [client (:frereth-server this)]
-    ;; This is actually the full-blown Client System
-    (raise {:not-implemented "Start here"})))
+   {:keys [send-fn] :as msg}]
+  (raise :not-implemented))
+
+(s/defn initiate-auth!
+  [this :- WebSockHandler
+   ev-msg]
+  (async/thread
+    (let [cpt (-> this :frereth-server :connection-manager)
+          responder (con-man/initiate-handshake cpt 5 2000)
+          response-chan (:respond responder)
+          [v c] (async/alts!! [response-chan (async/timeout 1000)])]
+      (if v
+        (do
+          (log/debug "Initiating handshake w/ Server returned:\n" (util/pretty v))
+          (reply this ev-msg :http/ok {:status 200 :body v}))
+        (let [msg (if (= c response-chan)
+                    "Handshaker closed response channel. This is bad."
+                    "Timed out waiting for response. This isn't great")]
+          (reply this ev-msg :http/internal-error {:status 500 :body (pr-str msg)}))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -99,11 +112,13 @@ sente at all."
 (s/defn event-handler
   [this :- WebSockHandler
    {:keys [id ?data event] :as ev-msg}]
-  (log/debugf "Event: %s\ndata: %s\nid: %s"
-              event ?data id)
+  (log/debug "Event: " event
+             " Data: " ?data
+             " ID: " id)
   (match [event ?data]
+         [:frereth/blank-slate _] (initiate-auth! this ev-msg)
          [:frereth/pong _] (forward this ev-msg)
-         :else (not-found this)))
+         :else (not-found this ev-msg)))
 
 (s/defn ctor :- WebSockHandler
   [src]

@@ -60,6 +60,9 @@
                          ;; to have another.
                          ;; TODO: change one name or the other
                          http-router :- (s/maybe fr-ring/HttpRequestHandler)
+                         ;; The system is setting the web socket handler up in
+                         ;; the web server, in parallel to this.
+                         ;; TODO: Move all the related code into there.
                          web-sock-handler :- (s/maybe WebSockHandler)
                          ws-stopper :- (s/maybe (s/=> s/Any))]
   component/Lifecycle
@@ -262,8 +265,11 @@ created by reset-web-socket-handler! so I can
 update on the fly.
 
 Besides, it's much more readable this way"
-  [{:keys [ch rcvr web-sock-handler ws-controller]}
+  [{:keys [ch rcvr web-sock-handler ws-controller] :as bundle}
    msg :- s/Any]
+  (when-not web-sock-handler
+    (log/error "Missing web socket handler in:\n" (util/pretty bundle))
+    (raise :what-do-I-have-wrong?))
   (if (= ch rcvr)
     (do
       (log/debug "Incoming message from a browser")
@@ -300,16 +306,20 @@ the event loop"
            (loop []
              (log/debug "Top of websocket event loop\n" {:stopper stopper
                                                          :receiver rcvr
-                                                         :ws-controller ws-controller})
+                                                         :ws-controller ws-controller
+                                                         :web-sock-handler web-sock-handler})
              (let [t-o (async/timeout (* 1000 60 5))
                    [v ch] (async/alts! [t-o stopper rcvr ws-controller])]
                (if v
                  (do
-                   (handle-ws-event-loop-msg {:ch ch
-                                              :rcvr rcvr
-                                              :ws-controller ws-controller
-                                              :web-sock-handler web-sock-handler}
-                                             v)
+                   (try
+                     (handle-ws-event-loop-msg {:ch ch
+                                                :rcvr rcvr
+                                                :ws-controller ws-controller
+                                                :web-sock-handler web-sock-handler}
+                                               v)
+                     (catch Exception ex
+                       (log/error ex "Failed to handle message:\n" v)))
                    (recur))
                  (when (= ch t-o)
                    ;; TODO: Should probably post a heartbeat to the
