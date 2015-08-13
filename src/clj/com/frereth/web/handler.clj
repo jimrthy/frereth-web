@@ -6,20 +6,22 @@
             [ribol.core :refer (manage raise)]
             [schema.core :as s]
             [taoensso.timbre :as log])
-  (:import [com.frereth.web.routes.core HttpRoutes]))
+  (:import [com.frereth.web.routes.core HttpRoutes]
+           [com.frereth.web.routes.websock WebSockHandler]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
 (def ServerDescription
-  "What the Server's ctor needs"
+  "What the Server's ctor needs/accepts"
   {})
-(def ServerCtorDescription
-  "What the system options piece looks like"
-  {:web-server ServerDescription})
 
 (declare create-stopper)
-(s/defrecord Server [http-router :- HttpRoutes]
+(s/defrecord Server [http-router :- (s/maybe HttpRoutes)
+                     killer :- (s/maybe (s/=> s/Any))
+                     ;; TODO: Document the schema that Immutant returns
+                     ;; from web/run that is being stored in here
+                     server-options :- (s/maybe {s/Any s/Any})]
     component/Lifecycle
   (start
    [this]
@@ -29,15 +31,12 @@
                                                                :port 8093})]
        (into this {:server-options server-options   ; really just for REPL access
                    :killer (create-stopper server-options)}))))
-
   (stop
    [this]
    (when-let [killer (:killer this)]
      (killer)
-     (assoc this :killer nil))))
-
-(def UnstartedServer (assoc ServerDescription
-                            :http-router s/Any))
+     (assoc this
+          :killer nil))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -57,6 +56,6 @@ handle the stopping callback. Which still doesn't seem to exist."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(s/defn ^:always-validate ctor :- UnstartedServer
+(s/defn ^:always-validate ctor :- Server
   [options :- ServerDescription]
   (map->Server options))
