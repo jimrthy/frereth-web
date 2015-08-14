@@ -73,6 +73,15 @@
       (async/close! receiver)))
   (assoc current :channel-socket latest))
 
+(defn send-event
+  "event-type must be a namespaced keyword
+  e.g. [:chsk/handshake [<?uid> <?csrf-token> <?handshake-data>]]"
+  ([event-type]
+   (send-event event-type {}))
+  ([event-type args]
+   (let [sender (-> global/app-state deref :channel-socket :send!)]
+     (sender [event-type args]))))
+
 (defn -main
   []
   (repl/start)

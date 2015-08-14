@@ -120,9 +120,15 @@ Copy/pasted directly from fnhouse."
     (let [path (:uri req)]
       (if (= path "/chsk")
         (let [method (:request-method req)]
-          (log/debug "Kicking off web socket interaction!")
+          (log/debug "Kicking off web socket interaction!\nRequest at this layer:\n"
+                     (util/pretty req))
           (condp = method
-            :get ((:ring-ajax-get-or-ws-handshake chsk) req)
+            :get (let [handler (:ring-ajax-get-or-ws-handshake chsk)
+                       response (handler req)]
+                   (log/debug "sente's RING ws handshake response:\n"
+                              (util/pretty response)
+                              "\nfrom Handler:" handler)
+                   response)
             :post ((:ring-ajax-post chsk) req)
             (raise {:not-implemented 404})))
         (do
@@ -156,11 +162,11 @@ TODO: Should probably save it so we can examine later"
         ;; TODO: Need a way to turn that option on.
         (assoc-in ring.middleware.defaults/site-defaults [:security :anti-forgery]
                   ;; This is the value recommended in the sente example project
-                  #_{:read-token (fn [req]
+                  {:read-token (fn [req]
                                    (-> req :params :csrf-token))}
                   ;; This is the value actually required by ring.defaults
                   ;; TODO: Create a PR to reflect this
-                  true)]
+                  #_true)]
     (-> handler
         debug-middleware  ; TODO: Only in debug mode
         ;; Q: Is there any point to this at all?

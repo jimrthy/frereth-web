@@ -216,7 +216,7 @@ the event loop"
 (s/defn make-channel-socket :- channel-socket
   []
   (let [{:keys [ ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
-        (sente/make-channel-socket! sente-web-server-adapter {})]
+        (sente/make-channel-socket! sente-web-server-adapter {:packer :edn})]
 
     {:ring-ajax-post ajax-post-fn
      :ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn
