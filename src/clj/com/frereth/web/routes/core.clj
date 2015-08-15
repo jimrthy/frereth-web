@@ -17,12 +17,10 @@
             [ring.middleware.content-type :refer (wrap-content-type)]
             [ring.middleware.defaults]
             [ring.middleware.format :refer (wrap-restful-format)]
-            #_[ring.middleware.keyword-params :refer (wrap-keyword-params)]
             ;; TODO: Look into wrap-multipart-params middleware.
             ;; Uploading files is definitely one of the major required
             ;; features.
             [ring.middleware.not-modified :refer (wrap-not-modified)]
-            #_[ring.middleware.params :refer (wrap-params)]
             [ring.middleware.resource :refer (wrap-resource)]
             [ring.middleware.stacktrace :refer (wrap-stacktrace)]
             [ring.util.response :as response]
@@ -159,13 +157,22 @@ TODO: Should probably save it so we can examine later"
         ;; If only because of the current pain involved with setting up
         ;; an SSL signing chain, it really isn't feasible to just make that
         ;; the default.
-        ;; TODO: Need a way to turn that option on.
+        ;; (i.e. if this is a general consumer app that gets installed
+        ;; everywhere, there won't be a real cert. For cases where the
+        ;; server is run by someone who cares, there will).
+        ;; TODO: Need a way to toggle that option
         (assoc-in ring.middleware.defaults/site-defaults [:security :anti-forgery]
-                  ;; This is the value recommended in the sente example project
-                  {:read-token (fn [req]
-                                   (-> req :params :csrf-token))}
-                  ;; This is the value actually required by ring.defaults
-                  ;; TODO: Create a PR to reflect this
+                  ;; This is the value recommended in the sente example project.
+                  ;; Note that this absolutely does work. I just spent the
+                  ;; evening experimenting with that.
+                  ;; The problem is absolutely my code.
+                  ;; Q: where's the difference?
+                  {:read-token (fn [req] (-> req :params :csrf-token))}
+                  ;; This is what worked for me originally.
+                  ;; According to the ring.middleware.defaults docs, this is what
+                  ;; I should be using
+                  ;; Q: Why does neither seem to work?
+                  ;; TODO: Create a PR to reflect this?
                   #_true)]
     (-> handler
         debug-middleware  ; TODO: Only in debug mode

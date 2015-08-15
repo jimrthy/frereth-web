@@ -37,6 +37,7 @@
 
   :dependencies [[org.clojure/clojure "1.7.0"] ; absolutely should not need this
                  ;; Probably only useful server-side
+                 [com.cognitect/transit-clj "0.8.275"]
                  [org.immutant/immutant "2.0.2" :exclusions [clj-tuple
                                                              org.clojure/clojure
                                                              org.clojure/java.classpath
@@ -67,7 +68,9 @@
                  [cljsjs/three "0.0.70-0"]
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
+                 [com.cognitect/transit-cljs "0.8.220"]
                  ;; TODO: Try out 58
+                 ;; sente sample app is on 28
                  [org.clojure/clojurescript "1.7.48" :exclusions [org.clojure/clojure
                                                                         org.clojure/tools.reader]]
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]

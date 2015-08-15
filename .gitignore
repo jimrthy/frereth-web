@@ -10,6 +10,6 @@ pom.xml.asc
 .hgignore
 .hg/
 
-.repl-*/*
+.repl*/*
 figwheel_server.log
 
