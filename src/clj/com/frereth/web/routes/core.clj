@@ -5,6 +5,7 @@
             [com.frereth.common.util :as util]
             [com.frereth.client.communicator :as comms]
             [com.frereth.web.routes.ring :as fr-ring]
+            [com.frereth.web.routes.sente]
             [com.frereth.web.routes.v1]  ; Just so it gets compiled, so fnhouse can find it
             [com.frereth.web.routes.websock :as ws]
             [com.stuartsierra.component :as component]
@@ -114,6 +115,8 @@ Copy/pasted directly from fnhouse."
 (s/defn ^:always-validate wrap-sente-middleware :- fr-ring/HttpRequestHandler
   [handler :- fr-ring/HttpRequestHandler
    chsk :- ws/channel-socket]
+  (throw (ex-info "Use the fnhouse handler instead")
+         {:deprecated true})
   (fn [req]
     (let [path (:uri req)]
       (if (= path "/chsk")
@@ -210,9 +213,10 @@ making the component available as needed"
 (s/defn wrapped-root-handler
   "Returns a handler (with middleware) for 'normal' http requests"
   [component :- HttpRoutes]
-  (-> (fnhouse-handling component {"v1" 'com.frereth.web.routes.v1})
+  (-> (fnhouse-handling component {"v1" 'com.frereth.web.routes.v1
+                                   "sente" 'com.frereth.web.routes.sente})
       index-middleware
-      (wrap-sente-middleware (-> component :web-sock-handler :ch-sock))
+      #_(wrap-sente-middleware (-> component :web-sock-handler :ch-sock))
       wrap-standard-middleware))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -37,7 +37,8 @@
   []
   (println "Building client connection")
   (let [{:keys [chsk ch-recv send-fn state]}
-        (sente/make-channel-socket! "/chsk"  ; Note path to request-handler on server
+        ;; Note path to request-handler on server
+        (sente/make-channel-socket! "/sente/chsk"
                                     {:type :auto})]
     (println "Client connection built")
     (let [result {:socket chsk

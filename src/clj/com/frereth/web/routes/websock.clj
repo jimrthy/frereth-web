@@ -19,7 +19,16 @@ sente at all."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-(def WebSocketDescription {})
+(def sente-event-type
+  "Note that this must be namespaced, according to the docs"
+  s/Keyword)
+
+(def sente-event
+  [sente-event-type s/Any])
+
+(def WebSocketDescription
+  "Q: What's this for?"
+  {})
 
 (def channel-socket
   {:ring-ajax-post fr-ring/HttpRequestHandler
