@@ -124,9 +124,14 @@ sente at all."
 (s/defn event-handler
   [this :- WebSockHandler
    {:keys [id ?data event] :as ev-msg}]
-  (log/debug "Event: " event
-             " Data: " ?data
-             " ID: " id)
+  (when-not (= event [:chsk/ws-ping])
+    ;; The ws-ping happens every 20 seconds.
+    ;; And every 2...I may be setting up multiple event loops on the client
+    ;; during a refresh
+    ;; TODO: Verify that, one way or another.
+    (log/debug "Event: " event
+               " Data: " ?data
+               " ID: " id))
   (match [event ?data]
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
          [:frereth/pong _] (forward this ev-msg)
@@ -145,7 +150,7 @@ Besides, it's much more readable this way"
     (raise :what-do-I-have-wrong?))
   (if (= ch rcvr)
     (do
-      (log/debug "Incoming message from a browser")
+      (comment (log/debug "Incoming message from a browser"))
        (event-handler web-sock-handler msg))
     (let [responder (:response msg)]
       (log/debug "Status check")
@@ -176,10 +181,10 @@ the event loop"
            event-loop
            (async/go
              (loop []
-               (log/debug "Top of websocket event loop\n" (util/pretty {:stopper stopper
-                                                                        :receiver rcvr
-                                                                        :ws-controller ws-controller
-                                                                        :web-sock-handler ((complement nil?) web-sock-handler)}))
+               (comment (log/debug "Top of websocket event loop\n" (util/pretty {:stopper stopper
+                                                                                 :receiver rcvr
+                                                                                 :ws-controller ws-controller
+                                                                                 :web-sock-handler ((complement nil?) web-sock-handler)})))
                (let [t-o (async/timeout (* 1000 60 5))
                      [v ch] (async/alts! [t-o stopper rcvr ws-controller])]
                  (if v

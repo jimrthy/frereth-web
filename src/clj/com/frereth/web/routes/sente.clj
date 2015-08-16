@@ -30,5 +30,7 @@
   {:responses {200 {}}}
   [request
    [:resources [:web-sock-handler chsk]]]
+  (log/debug "chsk post:\n"
+             (util/pretty request))
   (let [handler (:ring-ajax-post chsk)]
     (handler request)))
