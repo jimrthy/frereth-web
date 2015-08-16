@@ -227,11 +227,9 @@ the event loop"
       (log/error "Timed out trying to submit status request"))
     (async/close! responder)))
 
-(s/defn extract-user-id-from-request
+(s/defn extract-user-id-from-request :- s/Str
   "This is more complicated than it appears at first"
-  [#_[req :- fr-ring/RingRequest
-    client-id :- s/Str]
-   what-just-happened?]
+  [req :- fr-ring/RingRequest]
   ;; "Official" documented method for getting authenticated per-tab
   ;; session ID.
   ;; From sente's FAQ:
@@ -240,11 +238,11 @@ the event loop"
   ;; each unique client-id. Each ta therefore retains its own user-id,
   ;; but each user-id is dependent on a secure login procedure.
   (comment (str (get-in req [:session :base-user-id]) "/" (:client-id req)))
+  (log/error "Trying to extract the user ID from a request:\n"
+             (util/pretty req))
   ;; This is pretty much the simplest possible implementation.
   ;; When a tab connects, use the client ID it generated randomly
-  (comment (:client-id req))
-  (log/error "Trying to extract the user ID from a request:\n"
-             (util/pretty what-just-happened?)))
+  (:client-id req))
 
 (s/defn make-channel-socket :- channel-socket
   []

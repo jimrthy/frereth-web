@@ -4,15 +4,17 @@
                      [schema.macros :as macros]
                      [schema.core])
     (:require [cljs.core.async :as async]
+              [frereth.dispatcher :as dispatcher]
               [frereth.globals :as global]
               [frereth.repl :as repl]
               [frereth.three :as three]
-              [taoensso.sente :as sente :refer (cb-success?)]))
+              [taoensso.sente :as sente :refer (cb-success?)]
+              [taoensso.timbre :as log]))
 (enable-console-print!)
 
 (println "Top of core")
 
-(defn event-handler
+(defn start-event-handler!
   [socket-description]
   (let [done (atom false)
         recv (:recv-chan socket-description)]
@@ -21,12 +23,14 @@
         (println "Top of websocket event handling loop")
         (let [[incoming ch] (async/alts! [(async/timeout (* 1000 60 5)) recv])]
           (if (= recv ch)
-            (do
-              (println "Incoming message:\n" (:event incoming)
-                       "\nTODO: Handle it")
+            (try
+              (log/debug "Incoming message:\n"  incoming)
+              (dispatcher/handle! incoming socket-description)
               (when-not incoming
                 (println "Channel closed. We're done here")
-                (reset! done true)))
+                (reset! done true))
+              (catch js/Object ex
+                (log/error ex "Error escaped event handler")))
             (do
               (println "Background Async WS Loop: Heartbeat"))))
         (when-not @done
@@ -41,18 +45,19 @@
         (sente/make-channel-socket! "/sente/chsk"
                                     {:type :auto})]
     (println "Client connection built")
-    (let [result {:socket chsk
-                  :recv-chan ch-recv
-                  :send! send-fn
-                  :state state}]
+    (let [sock {:socket chsk
+                :recv-chan ch-recv
+                :send! send-fn
+                :state state}]
       ;; It's tempting to switch to sente's start-chsk-router!
       ;; But this half is working, so it doesn't seem worthwhile
       ;; OTOH, deleting code in favor of something standard that
       ;; other are using/testing usually
       ;; is a great improvement
       (go
-        (loop [n 5]
+        (loop [n 5]   ; FIXME: No magic numbers
           (when (< 0 n)
+            ;; FIXME: No magic numbers here, either
             (let [[handshake-response ch] (async/alts! [(async/timeout 5000) ch-recv])]
               (if (= ch ch-recv)
                 (do
@@ -60,7 +65,12 @@
                     (let [[kind body] event]
                       (println "Initial socket response:\n\t" kind
                                "\n\t" body)
-                      (event-handler result))))
+                      ;; This is really the handshake message
+                      (assert (= :chsk/state kind))
+                      (assert (:first-open? body))
+                      ;; The body has the :uid.
+                      ;; Q: Is there any point to saving it?
+                      (start-event-handler! sock))))
                 (do
                   (println "Timed out waiting for server response")
                   (recur (dec n))))))))
