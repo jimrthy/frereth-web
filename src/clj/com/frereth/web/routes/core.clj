@@ -112,30 +112,6 @@ Copy/pasted directly from fnhouse."
         (return-index)
         (handler req)))))
 
-(s/defn ^:always-validate wrap-sente-middleware :- fr-ring/HttpRequestHandler
-  [handler :- fr-ring/HttpRequestHandler
-   chsk :- ws/channel-socket]
-  (throw (ex-info "Use the fnhouse handler instead")
-         {:deprecated true})
-  (fn [req]
-    (let [path (:uri req)]
-      (if (= path "/chsk")
-        (let [method (:request-method req)]
-          (log/debug "Kicking off web socket interaction!\nRequest at this layer:\n"
-                     (util/pretty req))
-          (condp = method
-            :get (let [handler (:ring-ajax-get-or-ws-handshake chsk)
-                       response (handler req)]
-                   (log/debug "sente's RING ws handshake response:\n"
-                              (util/pretty response)
-                              "\nfrom Handler:" handler)
-                   response)
-            :post ((:ring-ajax-post chsk) req)
-            (raise {:not-implemented 404})))
-        (do
-          (log/debug "Sente middleware: just passing along request to" path)
-          (handler req))))))
-
 (s/defn debug-middleware :- fr-ring/HttpRequestHandler
   "Log the request as it comes in.
 

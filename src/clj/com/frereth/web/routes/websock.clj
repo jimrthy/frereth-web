@@ -227,10 +227,30 @@ the event loop"
       (log/error "Timed out trying to submit status request"))
     (async/close! responder)))
 
+(s/defn extract-user-id-from-request
+  "This is more complicated than it appears at first"
+  [#_[req :- fr-ring/RingRequest
+    client-id :- s/Str]
+   what-just-happened?]
+  ;; "Official" documented method for getting authenticated per-tab
+  ;; session ID.
+  ;; From sente's FAQ:
+  ;; I.e. sessions (+ some kind of login procedure) are used to
+  ;; determine a :base-user-id. That base-user-id is then joined with
+  ;; each unique client-id. Each ta therefore retains its own user-id,
+  ;; but each user-id is dependent on a secure login procedure.
+  (comment (str (get-in req [:session :base-user-id]) "/" (:client-id req)))
+  ;; This is pretty much the simplest possible implementation.
+  ;; When a tab connects, use the client ID it generated randomly
+  (comment (:client-id req))
+  (log/error "Trying to extract the user ID from a request:\n"
+             (util/pretty what-just-happened?)))
+
 (s/defn make-channel-socket :- channel-socket
   []
   (let [{:keys [ ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
-        (sente/make-channel-socket! sente-web-server-adapter {:packer :edn})]
+        (sente/make-channel-socket! sente-web-server-adapter {:packer :edn
+                                                              :user-id-fn extract-user-id-from-request})]
 
     {:ring-ajax-post ajax-post-fn
      :ring-ajax-get-or-ws-handshake ajax-get-or-ws-handshake-fn
