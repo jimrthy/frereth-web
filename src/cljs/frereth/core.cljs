@@ -24,8 +24,11 @@
         (let [[incoming ch] (async/alts! [(async/timeout (* 1000 60 5)) recv])]
           (if (= recv ch)
             (try
-              (log/debug "Incoming message:\n"  incoming)
-              (dispatcher/handle! incoming socket-description)
+              ;; Or maybe this is the start of a message batch?
+              ;; This is really a pair of async-receive-channel
+              ;; and send function
+              (log/debug "Incoming message:\n")
+              (dispatcher/handle! incoming)
               (when-not incoming
                 (println "Channel closed. We're done here")
                 (reset! done true))
@@ -73,8 +76,7 @@
                       (start-event-handler! sock))))
                 (do
                   (println "Timed out waiting for server response")
-                  (recur (dec n))))))))
-      result)))
+                  (recur (dec n)))))))))))
 
 (defn channel-swapper
   "Replace an existing sente connection  [if any] to the web server with a fresh one"

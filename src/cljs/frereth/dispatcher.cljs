@@ -22,7 +22,7 @@
   [request]
   {:status 404
    :body "\"Not Found\""
-   :request request})
+   :request (dissoc request :ch-recv :send-fn)})
 
 (defn standard-cb-notification
   [sent-message
@@ -34,8 +34,20 @@
 ;;; Public
 
 (defn handle!
-  [message
-   {:keys [send!] :as chsk}]
+  [{:keys [send-fn event id data? state] :as message-batch}]
+  (log/debug "Incoming message-batch:\n"
+             (keys message-batch)
+             "\nEvent: " event
+             "\nID: " id
+             "\nData: " data?
+             "\nState: " state)
+  ;; This is a cheese-ball dispatching mechanism, but
+  ;; anything more involved is YAGNI
+
   (cond
-    :else (let [msg (not-found message)]
-            (send! [:frereth/response msg] 5000 (partial standard-cb-notification msg)))))
+    (= id :chsk/handshake) (do (log/info "Channel Socket Handshake received")
+                              (log/error "TODO: Update the splash screen animation"))
+    :else (let [cleaned-request (dissoc message-batch :ch-recv :send-fn :state)
+                response (not-found cleaned-request)]
+            (log/warn "Don't have a handler for:\n" cleaned-request)
+            (send-fn [:frereth/response response] 5000 (partial standard-cb-notification response)))))
