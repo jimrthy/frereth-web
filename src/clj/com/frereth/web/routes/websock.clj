@@ -26,9 +26,9 @@ sente at all."
 (def sente-event
   [sente-event-type s/Any])
 
-(def WebSocketDescription
-  "Q: What's this for?"
-  {})
+(comment (def WebSocketDescription
+           "Q: What's this for?"
+           {}))
 
 (def channel-socket
   {:ring-ajax-post fr-ring/HttpRequestHandler
@@ -115,7 +115,7 @@ sente at all."
       (if v
         (do
           (log/debug "Initiating handshake w/ Server returned:\n" (util/pretty v))
-          (reply this ev-msg :http/ok {:status 200 :body v}))
+          (reply this ev-msg :frereth/response {:status 200 :body v}))
         (let [msg (if (= c response-chan)
                     "Handshaker closed response channel. This is bad."
                     "Timed out waiting for response. This isn't great")]
@@ -132,7 +132,7 @@ sente at all."
     (log/debug "Event: " event
                " Data: " ?data
                " ID: " id))
-  (match [event ?data]
+  (match [id ?data]
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
          [:frereth/pong _] (forward this ev-msg)
          :else (not-found this ev-msg)))
@@ -238,8 +238,6 @@ the event loop"
   ;; each unique client-id. Each ta therefore retains its own user-id,
   ;; but each user-id is dependent on a secure login procedure.
   (comment (str (get-in req [:session :base-user-id]) "/" (:client-id req)))
-  (log/error "Trying to extract the user ID from a request:\n"
-             (util/pretty req))
   ;; This is pretty much the simplest possible implementation.
   ;; When a tab connects, use the client ID it generated randomly
   (:client-id req))

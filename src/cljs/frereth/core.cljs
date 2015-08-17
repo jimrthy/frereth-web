@@ -20,7 +20,7 @@
         recv (:recv-chan socket-description)]
     (go
       (loop []
-        (println "Top of websocket event handling loop")
+        (log/debug "Top of websocket event handling loop")
         (let [[incoming ch] (async/alts! [(async/timeout (* 1000 60 5)) recv])]
           (if (= recv ch)
             (try
@@ -35,19 +35,19 @@
               (catch js/Object ex
                 (log/error ex "Error escaped event handler")))
             (do
-              (println "Background Async WS Loop: Heartbeat"))))
+              (log/info "Background Async WS Loop: Heartbeat"))))
         (when-not @done
           (recur)))
-      (println "Event Handler for " socket-description " exited"))))
+      (log/warn "Event Handler for " socket-description " exited"))))
 
 (defn client-sock
   []
-  (println "Building client connection")
+  (log/info "Building client connection")
   (let [{:keys [chsk ch-recv send-fn state]}
         ;; Note path to request-handler on server
         (sente/make-channel-socket! "/sente/chsk"
                                     {:type :auto})]
-    (println "Client connection built")
+    (log/debug "Client connection built")
     (let [sock {:socket chsk
                 :recv-chan ch-recv
                 :send! send-fn
@@ -66,7 +66,7 @@
                 (do
                   (if-let [event (:event handshake-response)]
                     (let [[kind body] event]
-                      (println "Initial socket response:\n\t" kind
+                      (log/info "Initial socket response:\n\t" kind
                                "\n\t" body)
                       ;; This is really the handshake message
                       (assert (= :chsk/state kind))
@@ -75,15 +75,17 @@
                       ;; Q: Is there any point to saving it?
                       (start-event-handler! sock))))
                 (do
-                  (println "Timed out waiting for server response")
+                  (log/warn "Timed out waiting for server response: "
+                            (dec n) " attempts left")
                   (recur (dec n)))))))))))
 
 (defn channel-swapper
   "Replace an existing sente connection  [if any] to the web server with a fresh one"
   [current latest]
   (when-let [existing-ws-channel (:channel-socket current)]
-    (let [receiver (:recv-chan existing-ws-channel)]
-      (async/close! receiver)))
+    (if-let [receiver (:recv-chan existing-ws-channel)]
+      (async/close! receiver)
+      (log/info "Swapping non-existent receiver among " (keys existing-ws-channel))))
   (assoc current :channel-socket latest))
 
 (defn send-event

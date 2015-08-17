@@ -21,15 +21,13 @@
   ;; Q: Alternatively, do I really need to?
   (let [handler (:ring-ajax-get-or-ws-handshake ch-sock)
         response (handler request)]
-    (log/debug "sente's RING ws handshake response:\n"
-               (util/pretty response)
-               "\nfrom Handler:" handler)
     response))
 
 (defnk $chsk$POST
   {:responses {200 {}}}
   [request
    [:resources [:web-sock-handler chsk]]]
+  ;; Q: When is this supposed to happen?
   (log/debug "chsk post:\n"
              (util/pretty request))
   (let [handler (:ring-ajax-post chsk)]

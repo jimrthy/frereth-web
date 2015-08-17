@@ -30,24 +30,34 @@
   (log/debug "Received\n" cb-reply
              "\nin response to:\n" sent-message))
 
+(defn send-standard-event
+  [send-fn
+   event-type
+   event-data]
+  (let [event [event-type event-data]]
+    (send-fn event 5000 (partial standard-cb-notification event))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
 (defn handle!
-  [{:keys [send-fn event id data? state] :as message-batch}]
+  [{:keys [send-fn event id ?data state] :as message-batch}]
   (log/debug "Incoming message-batch:\n"
              (keys message-batch)
              "\nEvent: " event
              "\nID: " id
-             "\nData: " data?
+             "\nData: " ?data
              "\nState: " state)
+
   ;; This is a cheese-ball dispatching mechanism, but
   ;; anything more involved is YAGNI
-
   (cond
     (= id :chsk/handshake) (do (log/info "Channel Socket Handshake received")
-                              (log/error "TODO: Update the splash screen animation"))
+                              (log/error "TODO: Update the splash screen animation")
+                              (send-standard-event send-fn :frereth/blank-slate {}))
+    (= id :chsk/state) (log/info "ChannelSock State message received:\n"
+                                 ?data)
     :else (let [cleaned-request (dissoc message-batch :ch-recv :send-fn :state)
                 response (not-found cleaned-request)]
             (log/warn "Don't have a handler for:\n" cleaned-request)
-            (send-fn [:frereth/response response] 5000 (partial standard-cb-notification response)))))
+            (send-standard-event send-fn :frereth/response response))))
