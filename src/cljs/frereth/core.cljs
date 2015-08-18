@@ -20,8 +20,21 @@
         recv (:recv-chan socket-description)]
     (go
       (loop []
-        (log/debug "Top of websocket event handling loop")
-        (let [[incoming ch] (async/alts! [(async/timeout (* 1000 60 5)) recv])]
+        (log/debug "Top of websocket event handling loop with " (pr-str recv)
+                   " a " (type recv)
+                   "\nout of: " (keys socket-description))
+        (let [event-pair
+              (try
+                (async/alts! [(async/timeout (* 1000 60 5)) recv])
+                (catch js/Error ex
+                  ;; I'm getting an Error that looks like it's happening here
+                  ;; that "[object Object] is not ISeqable"
+                  ;; This isn't the case, since we just yielded control
+                  ;; to wait on the incoming event
+                  (log/error ex "Yep, trying to call alts! is failing")))
+              _ (log/debug "alts! returned: " event-pair)
+              [incoming ch] event-pair]
+          (log/debug "Some sort of message received")
           (if (= recv ch)
             (try
               ;; Or maybe this is the start of a message batch?
@@ -101,7 +114,10 @@
   []
   (repl/start)
   (three/start-graphics js/THREE)
-  (swap! global/app-state  channel-swapper (client-sock)))
+  (go
+    (let [channel-creation-loop (client-sock)]
+      (swap! global/app-state  channel-swapper (async/<! channel-creation-loop)))
+    (log/info "Connected to outside world")))
 ;; Because I'm not sure how to trigger this on a page reload
 ;; (there's a built-in figwheel method precisely for this)
 ;; Really just for scaffolding: I won't want to do this after I'm
