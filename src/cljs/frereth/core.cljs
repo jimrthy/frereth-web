@@ -1,5 +1,7 @@
 (ns ^:figwheel-always frereth.core
-    "TODO: Do something interesting here"
+    "This part should trigger the system start, and not much more
+
+Right now, that isn't the case at all."
     (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
                      [schema.macros :as macros]
                      [schema.core])
