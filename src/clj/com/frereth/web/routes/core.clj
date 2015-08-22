@@ -109,6 +109,9 @@ Copy/pasted directly from fnhouse."
         ;; Actually, I probably shouldn't even handle this
         ;; one. The same resource handler that's getting my
         ;; cljs should be able to cope with this.
+        ;; A: Sente expects/requires it.
+        ;; It seems very silly to have anything in the
+        ;; request chain that doesn't.
         (return-index)
         (handler req)))))
 

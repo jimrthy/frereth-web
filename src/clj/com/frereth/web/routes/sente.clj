@@ -15,10 +15,14 @@
   {:responses {200 {:what? s/Int}}}
   [request
    [:resources [:web-sock-handler ch-sock]]]
-  ;; This is the reason I haven't managed to get this
-  ;; approach to work before.
-  ;; Q: How do I access the full request?
-  ;; Q: Alternatively, do I really need to?
+  ;; TODO: Have client check that its login dialog isn't
+  ;; expired/going to expire in, say, the next half-second.
+  ;; Or whatever its server does for auth (which may be
+  ;; nothing more than connecting anonymously).
+  ;; This renderer will be trying to connect soon, so
+  ;; the upstream pieces might as well be ready to
+  ;; kick off the action.
+  (log/warn "Client should ensure login dialog is fresh")
   (let [handler (:ring-ajax-get-or-ws-handshake ch-sock)
         response (handler request)]
     response))
