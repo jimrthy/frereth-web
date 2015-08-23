@@ -26,10 +26,6 @@ sente at all."
 (def sente-event
   [sente-event-type s/Any])
 
-(comment (def WebSocketDescription
-           "Q: What's this for?"
-           {}))
-
 (def channel-socket
   {:ring-ajax-post fr-ring/HttpRequestHandler
    :ring-ajax-get-or-ws-handshake fr-ring/HttpRequestHandler
@@ -94,6 +90,14 @@ sente at all."
       ;; The id is really the event key. It's useless here.
       (send-fn id response))))
 
+(s/defn ^:always-validate post
+  [send-fn
+   id
+   event-key :- s/Keyword
+   event-data :- s/Any]
+  ;; Q: Should I prefer client-id or uid?
+  (send-fn id [event-key event-data]))
+
 (s/defn not-found
   [this :- WebSockHandler
    ev-msg]
@@ -108,18 +112,22 @@ sente at all."
   [this :- WebSockHandler
    ev-msg]
   (async/thread
-    (let [cpt (-> this :frereth-server :connection-manager)
-          responder (con-man/initiate-handshake cpt 5 2000)
-          response-chan (:respond responder)
-          [v c] (async/alts!! [response-chan (async/timeout 1000)])]
-      (if v
-        (do
-          (log/debug "Initiating handshake w/ Server returned:\n" (util/pretty v))
-          (reply this ev-msg :frereth/response {:status 200 :body v}))
-        (let [msg (if (= c response-chan)
-                    "Handshaker closed response channel. This is bad."
-                    "Timed out waiting for response. This isn't great")]
-          (reply this ev-msg :http/internal-error {:status 500 :body (pr-str msg)}))))))
+    (let [cpt (-> this :frereth-server :connection-manager)]
+      (if-let [responder (con-man/initiate-handshake cpt 5 2000)]
+        (let [response-chan (:respond responder)
+              [v c] (async/alts!! [response-chan (async/timeout 1000)])]
+          (if v
+            (do
+              (log/debug "Initiating handshake w/ Server returned:\n" (util/pretty v))
+              (reply this ev-msg :frereth/response {:status 200 :body "Handshake Completed"})
+              (let [{:keys [uid client-id]} ev-msg
+                    id (or client-id uid)]
+                (post (:send-fn ev-msg) :frereth/initialize-world v)))
+            (let [msg (if (= c response-chan)
+                        "Handshaker closed response channel. This is bad."
+                        "Timed out waiting for response. This isn't great")]
+              (reply this ev-msg :http/internal-error {:status 500 :body (pr-str msg)}))))
+        (reply this ev-msg :http/bad-gateway {:status 502 :body "Handshake initiation failed"})))))
 
 (s/defn event-handler
   [this :- WebSockHandler
@@ -130,8 +138,13 @@ sente at all."
     ;; during a refresh
     ;; TODO: Verify that, one way or another.
     (log/debug "Event: " event
-               " Data: " ?data
-               " ID: " id))
+               "
+Data: " ?data
+"
+ID: " id
+"
+out of keys:
+" (keys ev-msg)))
   (match [id ?data]
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
          [:frereth/pong _] (forward this ev-msg)
@@ -181,21 +194,23 @@ the event loop"
            event-loop
            (async/go
              (loop []
-               (comment (log/debug "Top of websocket event loop\n" (util/pretty {:stopper stopper
-                                                                                 :receiver rcvr
-                                                                                 :ws-controller ws-controller
-                                                                                 :web-sock-handler ((complement nil?) web-sock-handler)})))
+               (comment) (log/debug "Top of websocket event loop\n" (util/pretty {:stopper stopper
+                                                                                  :receiver rcvr
+                                                                                  :ws-controller ws-controller
+                                                                                  :web-sock-handler ((complement nil?) web-sock-handler)}))
                (let [t-o (async/timeout (* 1000 60 5))
                      [v ch] (async/alts! [t-o stopper rcvr ws-controller])]
                  (if v
                    (do
+                     (log/debug "Message to handle:
+" (util/pretty v))
                      (try
                        (handle-ws-event-loop-msg {:ch ch
                                                   :rcvr rcvr
                                                   :web-sock-handler web-sock-handler}
                                                  v)
                        (catch Exception ex
-                         (log/error ex "Failed to handle message:\n" v)))
+                         (log/error ex "Failed to handle message:\n" (util/pretty v))))
                      (recur))
                    (when (= ch t-o)
                      ;; TODO: Should probably post a heartbeat to the

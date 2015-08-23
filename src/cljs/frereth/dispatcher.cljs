@@ -16,6 +16,11 @@
    :request s/Any})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Named "Constants"
+
+(def event-response-timeout-ms 5000)
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
 (defn not-found
@@ -31,11 +36,18 @@
              "\nin response to:\n" sent-message))
 
 (defn send-standard-event
+  "Q: How realistic is this approach?
+It works for basic request/response pairs, but fails in the
+general case of ordinary event dispatching.
+
+It almost seems like it would be better to just write everything
+from the 'ordinary event dispatching' stand-point to keep the entire
+approach unified"
   [send-fn
    event-type
    event-data]
   (let [event [event-type event-data]]
-    (send-fn event 5000 (partial standard-cb-notification event))))
+    (send-fn event event-response-timeout-ms (partial standard-cb-notification event))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

@@ -14,7 +14,7 @@ Right now, that isn't the case at all."
               [taoensso.timbre :as log]))
 (enable-console-print!)
 
-(println "Top of core")
+(def default-timeout-ms (* 1000 60 5))
 
 (defn start-event-handler!
   [socket-description]
@@ -22,21 +22,18 @@ Right now, that isn't the case at all."
         recv (:recv-chan socket-description)]
     (go
       (loop []
-        (log/debug "Top of websocket event handling loop with " (pr-str recv)
-                   " a [cryptic function]" #_(type recv)
-                   "\nout of: " (keys socket-description))
+        (log/debug "Top of websocket event handling loop")
         (let [event-pair
               (try
-                (async/alts! [(async/timeout (* 1000 60 5)) recv])
+                (async/alts! [(async/timeout default-timeout-ms) recv])
                 (catch js/Error ex
                   ;; I'm getting an Error that looks like it's happening here
                   ;; that "[object Object] is not ISeqable"
                   ;; This isn't the case, since we just yielded control
                   ;; to wait on the incoming event
                   (log/error ex "Yep, trying to call alts! is failing")))
-              _ (log/debug "alts! returned: " event-pair)
+              _ (log/debug "alts! returned: " (-> event-pair first keys) " and an async channel")
               [incoming ch] event-pair]
-          (log/debug "Some sort of message received")
           (if (= recv ch)
             (try
               ;; Or maybe this is the start of a message batch?
@@ -92,11 +89,17 @@ Right now, that isn't the case at all."
                           ;; Q: Is there any point to saving it?
                           (let [event-handling-go-block (start-event-handler! sock)]
                             (log/debug "start-event-handler! returned:\n"
-                                       event-handling-go-block)
-                            (let [result (async/<! event-handling-go-block)]
-                              (log/debug "start-event-handler!'s go-block returned:\n"
-                                         result)
-                              result)))))
+                                       (pr-str event-handling-go-block))
+                            ;; TODO: Don't block on this. It really won't exit ever
+                            ;; TODO: Add a channel we can close to tell it to exit
+                            ;; Surely I already did that
+                            ;; TODO: Verify
+                            (comment
+                              (let [result (async/<! event-handling-go-block)]
+                                (log/debug "start-event-handler!'s go-block returned:\n"
+                                           result)
+                                result))
+                            event-handling-go-block))))
                     (do
                       (log/warn "Timed out waiting for server response: "
                                 (dec n) " attempts left")
@@ -116,11 +119,11 @@ Right now, that isn't the case at all."
       (log/info "Swapping non-existent receiver among " (keys existing-ws-channel))))
   (assoc current :channel-socket latest))
 
-(defn send-event
+(defn send-event!
   "event-type must be a namespaced keyword
   e.g. [:chsk/handshake [<?uid> <?csrf-token> <?handshake-data>]]"
   ([event-type]
-   (send-event event-type {}))
+   (send-event! event-type {}))
   ([event-type args]
    (let [sender (-> global/app-state deref :channel-socket :send!)]
      (sender [event-type args]))))
@@ -130,19 +133,20 @@ Right now, that isn't the case at all."
   (repl/start)
   (three/start-graphics js/THREE)
   (go
-    (let [{:keys [channel-creation-loop]
+    (let [{:keys [pending-server-handshake]
            :as new-client-socket} (client-sock)
-          msg "channel-creation-loop has returned a go-loop that's
-initializing the connection"]
+           msg (str "client-sock has returned a go-loop that's
+initializing the connection:
+" (keys new-client-socket))]
       (log/debug msg)
+      (swap! global/app-state
+             channel-swapper new-client-socket)
       ;; This should pause, waiting for the result of
       ;; channel-creation-loop, then swap the global/app-state's
       ;; :channel-socket with whatever it returns
-      (let [channel-creation-result (<! channel-creation-loop)]
+      (let [channel-creation-result (<! pending-server-handshake)]
         (log/debug "Server fresh connection request returned:\n"
-                   channel-creation-result)
-        (swap! global/app-state
-               channel-swapper new-client-socket)))
+                   channel-creation-result)))
     (log/info "Connected to outside world")))
 ;; Because I'm not sure how to trigger this on a page reload
 ;; (there's a built-in figwheel method precisely for this)
