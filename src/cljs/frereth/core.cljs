@@ -14,7 +14,8 @@ Right now, that isn't the case at all."
               [taoensso.timbre :as log]))
 (enable-console-print!)
 
-(def default-timeout-ms (* 1000 60 5))
+(def five-seconds-in-ms (* 1000 5))
+(def five-minutes-in-ms (* 60 five-seconds-in-ms))
 
 (defn start-event-handler!
   [socket-description]
@@ -25,7 +26,7 @@ Right now, that isn't the case at all."
         (log/debug "Top of websocket event handling loop")
         (let [event-pair
               (try
-                (async/alts! [(async/timeout default-timeout-ms) recv])
+                (async/alts! [(async/timeout five-minutes-in-ms) recv])
                 (catch js/Error ex
                   ;; I'm getting an Error that looks like it's happening here
                   ;; that "[object Object] is not ISeqable"
@@ -75,7 +76,7 @@ Right now, that isn't the case at all."
             (loop [n 5]   ; FIXME: No magic numbers
               (when (< 0 n)
                 ;; FIXME: No magic numbers here, either
-                (let [[handshake-response ch] (async/alts! [(async/timeout 5000) ch-recv])]
+                (let [[handshake-response ch] (async/alts! [(async/timeout five-seconds-in-ms) ch-recv])]
                   (if (= ch ch-recv)
                     (do
                       (if-let [event (:event handshake-response)]

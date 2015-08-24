@@ -69,6 +69,16 @@ approach unified"
                               (send-standard-event send-fn :frereth/blank-slate {}))
     (= id :chsk/state) (log/info "ChannelSock State message received:\n"
                                  ?data)
+    ;; Letting the server just take control here would be a horrible idea
+    (= id :frereth/initialize-world (do
+                                      (log/info "Switching to new world")
+                                      ;; This is wreaking havoc
+                                      ;; Q: Why?
+                                      (log/error "TODO: Make this happen")))
+    (= id :frereth/response (do
+                              (log/debug "Request response received:\n"
+                                         "I should try to do something intelligent with this,\n"
+                                         "but it should really be handled in its own callback")))
     :else (let [cleaned-request (dissoc message-batch :ch-recv :send-fn :state)
                 response (not-found cleaned-request)]
             (log/warn "Don't have a handler for:\n" cleaned-request)

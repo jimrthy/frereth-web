@@ -14,7 +14,8 @@ sente at all."
             [schema.core :as s]
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.immutant :refer (sente-web-server-adapter)]
-            [taoensso.timbre :as log :refer (debugf)]))
+            [taoensso.timbre :as log :refer (debugf)])
+  (:import [clojure.lang ExceptionInfo]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -79,16 +80,29 @@ sente at all."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(s/defn ^:always-validate reply
+(s/defn reply
   [this :- WebSockHandler   ; Q: Will there ever be any reason for this?
-   {:keys [?reply-fn send-fn id]}
+   {:keys [data? id ?reply-fn send-fn uid]}
    event-key :- s/Keyword
    event-data :- s/Any]
-  (let [response [event-key event-data]]
-    (if ?reply-fn
-      (?reply-fn response)
-      ;; The id is really the event key. It's useless here.
-      (send-fn id response))))
+  (let [msg (str "replying to: " id
+                 "\n\tthis: "(keys this) ", a " (class this)
+                 "\n" #_(util/pretty this) "this is obnoxious"
+                 "\n\tevent-key: " event-key
+                 "\n\tevent-data: " event-data)]
+    (log/debug msg))
+  (try
+    ;; One really obnoxious bit about the weirdness I'm running across here:
+    ;; I'm not even using this
+    (let [actual (s/validate WebSockHandler this)]
+      (let [response [event-key event-data]]
+        (if ?reply-fn
+          (?reply-fn response)
+          (send-fn uid response))))
+    (catch ExceptionInfo ex
+      (let [msg (str "WebSockHandler fails to validate.\n"
+                     (util/pretty (.getData ex)))]
+        (log/error ex msg)))))
 
 (s/defn ^:always-validate post
   [send-fn
@@ -122,12 +136,18 @@ sente at all."
               (reply this ev-msg :frereth/response {:status 200 :body "Handshake Completed"})
               (let [{:keys [uid client-id]} ev-msg
                     id (or client-id uid)]
-                (post (:send-fn ev-msg) :frereth/initialize-world v)))
+                (post (:send-fn ev-msg) id :frereth/initialize-world v)))
             (let [msg (if (= c response-chan)
                         "Handshaker closed response channel. This is bad."
                         "Timed out waiting for response. This isn't great")]
               (reply this ev-msg :http/internal-error {:status 500 :body (pr-str msg)}))))
         (reply this ev-msg :http/bad-gateway {:status 502 :body "Handshake initiation failed"})))))
+
+(s/defn ping
+  [this :- WebSockHandler
+   ev-msg]
+  ;; Might as well take advantage of what's available
+  (log/debug "Pinged!\nTODO: Forward this along to the server"))
 
 (s/defn event-handler
   [this :- WebSockHandler
@@ -138,14 +158,11 @@ sente at all."
     ;; during a refresh
     ;; TODO: Verify that, one way or another.
     (log/debug "Event: " event
-               "
-Data: " ?data
-"
-ID: " id
-"
-out of keys:
-" (keys ev-msg)))
+               "\nData: " ?data
+               "\nID: " id
+               "\nout of keys:\n" (keys ev-msg)))
   (match [id ?data]
+         [:chsk/ws-ping _] (ping this ev-msg)
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
          [:frereth/pong _] (forward this ev-msg)
          :else (not-found this ev-msg)))
@@ -202,8 +219,11 @@ the event loop"
                      [v ch] (async/alts! [t-o stopper rcvr ws-controller])]
                  (if v
                    (do
-                     (log/debug "Message to handle:
-" (util/pretty v))
+                     (let [event (-> v :event first)]
+                       (when-not (= event :chsk/ws-ping)
+                         ;; Handle it, but don't log about it: this happens far too often
+                         ;; to spam the logs with the basic fact
+                         (log/debug "Message to handle:\n" (util/pretty v))))
                      (try
                        (handle-ws-event-loop-msg {:ch ch
                                                   :rcvr rcvr
