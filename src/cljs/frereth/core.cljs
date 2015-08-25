@@ -33,7 +33,6 @@ Right now, that isn't the case at all."
                   ;; This isn't the case, since we just yielded control
                   ;; to wait on the incoming event
                   (log/error ex "Yep, trying to call alts! is failing")))
-              _ (log/debug "alts! returned: " (-> event-pair first keys) " and an async channel")
               [incoming ch] event-pair]
           (if (= recv ch)
             (try
@@ -41,10 +40,11 @@ Right now, that isn't the case at all."
               ;; This is really a pair of async-receive-channel
               ;; and send function
               (log/debug "Incoming message:\n")
-              (dispatcher/handle! incoming)
-              (when-not incoming
-                (println "Channel closed. We're done here")
-                (reset! done true))
+              (if incoming
+                (dispatcher/handle! incoming)
+                (do
+                  (println "Channel closed. We're done here")
+                  (reset! done true)))
               (catch js/Object ex
                 (log/error ex "Error escaped event handler")))
             (do
@@ -89,17 +89,6 @@ Right now, that isn't the case at all."
                           ;; The body has the :uid.
                           ;; Q: Is there any point to saving it?
                           (let [event-handling-go-block (start-event-handler! sock)]
-                            (log/debug "start-event-handler! returned:\n"
-                                       (pr-str event-handling-go-block))
-                            ;; TODO: Don't block on this. It really won't exit ever
-                            ;; TODO: Add a channel we can close to tell it to exit
-                            ;; Surely I already did that
-                            ;; TODO: Verify
-                            (comment
-                              (let [result (async/<! event-handling-go-block)]
-                                (log/debug "start-event-handler!'s go-block returned:\n"
-                                           result)
-                                result))
                             event-handling-go-block))))
                     (do
                       (log/warn "Timed out waiting for server response: "

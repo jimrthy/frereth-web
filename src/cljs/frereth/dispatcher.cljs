@@ -1,8 +1,13 @@
 (ns frereth.dispatcher
-    (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
-                     [schema.macros :as sm]
-                     )
+  (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
+                   [ribol.cljs :refer [raise]]
+                   [schema.macros :as sm])
   (:require [cljs.core.async :as async]
+            [frereth.fsm :as fsm]
+            [ribol.cljs :refer [create-issue
+                                *managers*
+                                *optmap*
+                                raise-loop]]
             [schema.core :as s]
             [taoensso.timbre :as log]))
 
@@ -49,6 +54,19 @@ approach unified"
   (let [event [event-type event-data]]
     (send-fn event event-response-timeout-ms (partial standard-cb-notification event))))
 
+(s/defn real-dispatcher
+  [event]
+  (log/debug "real-dispatcher handling:\n" event)
+  (let [[event-type
+         body] event]
+    (log/debug ":chsk/recv around a " event-type
+               "\nMessage Body:\n" body)
+    (condp = event-type
+      :frereth/initialize-world (fsm/transition-world body)
+      :http/not-found (log/error "Server Did Not Find:\n" body)
+      :else (log/error "Unhandled event-type: " event-type
+                       "\nMessage Body:\n" (pr-str body)))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -59,26 +77,29 @@ approach unified"
              "\nEvent: " event
              "\nID: " id
              "\nData: " ?data
-             "\nState: " state)
+             "\nState: " state
+             ;; This is pretty useless
+             "\nMessage Batch is '" (dissoc message-batch :send-fn)
+             "', a " (type message-batch))
 
   ;; This is a cheese-ball dispatching mechanism, but
   ;; anything more involved is YAGNI
-  (cond
-    (= id :chsk/handshake) (do (log/info "Channel Socket Handshake received")
-                              (log/error "TODO: Update the splash screen animation")
-                              (send-standard-event send-fn :frereth/blank-slate {}))
-    (= id :chsk/state) (log/info "ChannelSock State message received:\n"
-                                 ?data)
+  (condp = id
+    :chsk/handshake (do (log/info "Initial Channel Socket Handshake received")
+                        (log/error "TODO: Update the splash screen animation")
+                        (send-standard-event send-fn :frereth/blank-slate {}))
+    :chsk/recv (real-dispatcher ?data)
+    :chsk/state (log/info "ChannelSock State message received:\n"
+                          ?data)
     ;; Letting the server just take control here would be a horrible idea
-    (= id :frereth/initialize-world (do
-                                      (log/info "Switching to new world")
-                                      ;; This is wreaking havoc
-                                      ;; Q: Why?
-                                      (log/error "TODO: Make this happen")))
-    (= id :frereth/response (do
-                              (log/debug "Request response received:\n"
-                                         "I should try to do something intelligent with this,\n"
-                                         "but it should really be handled in its own callback")))
+    :frereth/initialize-world (do
+                                (log/info "Switching to new world")
+                                (fsm/transition-world ?data))
+    :frereth/response (do
+                        (log/debug "Request response received:\n"
+                                   "I should try to do something intelligent with this,\n"
+                                   "but it should really be handled in its own callback")
+                        (raise {:not-expected "This should come in as the data body of a :chsk/recv"}))
     :else (let [cleaned-request (dissoc message-batch :ch-recv :send-fn :state)
                 response (not-found cleaned-request)]
             (log/warn "Don't have a handler for:\n" cleaned-request)

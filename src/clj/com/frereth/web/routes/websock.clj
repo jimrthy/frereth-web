@@ -165,6 +165,8 @@ sente at all."
          [:chsk/ws-ping _] (ping this ev-msg)
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
          [:frereth/pong _] (forward this ev-msg)
+         [:frereth/response _] (log/info "Response from renderer:\n"
+                                         (util/pretty ?data))
          :else (not-found this ev-msg)))
 
 (s/defn handle-ws-event-loop-msg :- s/Any
