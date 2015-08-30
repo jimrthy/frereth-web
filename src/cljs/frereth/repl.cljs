@@ -80,6 +80,7 @@
                       :ref "to-read"}
                  nil)
       (dom/br nil nil)
+      ;; TODO: Inline click handlers are *so* jquery
       (dom/input #js {:type "button"
                       :onClick (fn [e]
                                  (let [elm (om/get-node owner "to-read")
@@ -87,7 +88,7 @@
                                        evaluator (om/get-state owner :evaluator)]
                                    (println "I've been clicked! Sending\n"
                                             forms "\nto\n" evaluator
-                                            "which is" (if evaluator "" " not") " truthy")
+                                            "which is" (if evaluator "" " not") "truthy")
                                    ;; I'm getting a warning about returning false from an event handler.
                                    ;; Q: Why?
                                    (if forms
@@ -97,7 +98,7 @@
                  nil)))))
 
 (defn evaluate
-  [data forms]
+  [cursor forms]
   (println "Getting ready to evaluate:\n" forms)
   (let [state (get-in @global/app-state [:repls 0 :state])]
     ;; The nesting makes this more complex than needed
@@ -105,26 +106,36 @@
     (cljs/eval-str state
                    forms
                    ;; TODO: Need to assign something meaningful
-                   "Name this"
+                   "Source 'File'"
                    {:context :expr  ; documented legal values are :expr, :statement, and :return
                                         ; documentation doesn't provide any hints about meaning
                     :def-emits-var true
                     :eval cljs/js-eval
-                    :ns (get-in data [:repls 0 :namespace])
+                    :ns (get-in cursor [:repls 0 :namespace])
                     :source-map true
                     :verbose true}
                    (fn [{:keys [error ns value] :as res}]
                      (println "Evaluation returned:" (pr-str res))
-                     (when [ns]
+                     (when ns
                        ;; Q: Why isn't this updating the textbox?
                        ;; I don't really care all that much, but it's annoying.
-                       (om/transact! data [:repls 0 :namespace]
+                       ;; I'm getting an assertion error that the cursor is not
+                       ;; transactable
+                       ;; Actually, it probably isn't the cursor at all.
+                       ;; This is the data parameter that was supplied to
+                       ;; repl-wrapper.
+                       ;; I've probably managed to forget how Om works, again.
+                       ;; Or maybe not.
+                       (log/debug "Trying to update cursor, which has keys '"
+                                  (-> cursor keys pr-str)
+                                  "' with that result")
+                       (om/transact! cursor [:repls 0 :namespace]
                                      (fn [_]
                                        (println "Latest namespace: " ns)
                                        ns)))
                      ;; TODO: If this wasn't an error, clear the text box
                      (let [response (or error value)]
-                       (om/transact! data [:repls 0 :output]
+                       (om/transact! cursor [:repls 0 :output]
                                      (fn [xs]
                                        (conj xs forms response))))))))
 

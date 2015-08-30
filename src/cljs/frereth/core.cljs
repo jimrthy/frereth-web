@@ -145,7 +145,7 @@ initializing the connection:
       ;; :channel-socket with whatever it returns
       (let [channel-creation-result (<! pending-server-handshake)]
         (log/debug "Server fresh connection request returned:\n"
-                   channel-creation-result)))
+                   (pr-str channel-creation-result))))
     (log/info "Connected to outside world")))
 ;; Because I'm not sure how to trigger this on a page reload
 ;; (there's a built-in figwheel method precisely for this)

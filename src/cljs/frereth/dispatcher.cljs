@@ -63,6 +63,8 @@ approach unified"
                "\nMessage Body:\n" body)
     (condp = event-type
       :frereth/initialize-world (fsm/transition-world body)
+      ;; I'm getting this and don't know why.
+      ;; TODO: Track it down
       :http/not-found (log/error "Server Did Not Find:\n" body)
       :else (log/error "Unhandled event-type: " event-type
                        "\nMessage Body:\n" (pr-str body)))))
@@ -72,15 +74,15 @@ approach unified"
 
 (defn handle!
   [{:keys [send-fn event id ?data state] :as message-batch}]
-  (log/debug "Incoming message-batch:\n"
-             (keys message-batch)
-             "\nEvent: " event
-             "\nID: " id
-             "\nData: " ?data
-             "\nState: " state
-             ;; This is pretty useless
-             "\nMessage Batch is '" (dissoc message-batch :send-fn)
-             "', a " (type message-batch))
+  (comment (log/debug "Incoming message-batch:\n"
+                      (keys message-batch)
+                      "\nEvent: " event
+                      "\nID: " id
+                      "\nData: " ?data
+                      "\nState: " state
+                      ;; This is pretty useless
+                      "\nMessage Batch is '" (dissoc message-batch :send-fn)
+                      "', a " (type message-batch)))
 
   ;; This is a cheese-ball dispatching mechanism, but
   ;; anything more involved is YAGNI

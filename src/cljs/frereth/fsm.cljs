@@ -1,6 +1,7 @@
 (ns frereth.fsm
   "This is a misnomer. But I have to start somewhere."
   (:require [frereth.globals :as global]
+            [om.core :as om]
             [ribol.cljs :refer [create-issue
                                 *managers*
                                 *optmap*
@@ -10,9 +11,14 @@
 
 (defn transition-to-html5
   [{:keys [body css script] :as html}]
-  ;; Q: Aren't we supposed to have symbol maps that provide useful info for this sort of thing now?
-  (raise {:not-implemented html
-          :stack-trace "Start Transition"}))
+  (log/debug "Switching to HTML 5")
+  (let [renderer (fn [data owner]
+                   (reify
+                     om/IRender
+                     (render [_]
+                             (log/debug "HTML 5: simplest approach I can imagine: just return " (pr-str body))
+                             body)))]
+    (swap! global/app-state assoc :renderer renderer)))
 
 (defn transition-world
   "Let's get this party started!"
@@ -25,7 +31,6 @@
 This is important!!!!!
 World transition to:
 =========================================\n"
-            ;; LOL First time I tried this, I hit :hold-please
             destination)
   (let [data (:data destination)
         {:keys [type version]} data]
