@@ -18,26 +18,21 @@
      [this state]
      (dom/div nil
               (if-let [renderer (:renderer state)]
-                (do
-                  ;; This isn't a particularly good approach.
-                  ;; But it's a start
-                  (dom/canvas #js {:id "view"})
-                  ;; It's tempting to do
-                  #_(comment (renderer (:world-state state)))
-                  ;; here, but this should (at least theoretically)
-                  ;; really only happen once, or whenever the
-                  ;; global state changes.
-                  ;; Actually, that's far too often.
-                  ;; Still need more hammock time on this.
-                  )
-                (dom/div nil "Initializing..."))
+                (om/build renderer (:world-state state))
+                (dom/canvas #js {:id "view" }))
               (om/build repl/repl-wrapper (:repls state))))
     om/IDidUpdate
     (did-update
      [this prev-props prev-state]
      ;; Can't do this until after the canvas has been renderered.
-     ;; TODO: Absolutely does not belong in the REPL namespace.
-     (log/debug "Starting 3-D graphics")
+     ;; Part of the reason I set this up the way I did originally
+     ;; was that my access to js/THREE was bolloxed inside functions:
+     ;; I only had access to it at the top level
+     ;; Q: Has that been resolved?
+     (log/debug "Starting 3-D graphics because we've created the view canvas:\n"
+                #_(pr-str js/THREE) "js/THREE is meaningful here"
+                "\nProperties: " (pr-str (keys prev-props))
+                "\nState: " (pr-str (keys prev-state)))
      (three/start-graphics js/THREE))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

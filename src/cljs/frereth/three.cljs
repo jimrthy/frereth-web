@@ -38,10 +38,8 @@
 (defn start-graphics
   "TODO: Add a 2-D canvas HUD"
   [THREE]
-  (swap! global/app-state assoc :renderer (create-renderer THREE))
-  (letfn [(animate []
-                     (let [render (-> global/app-state deref :renderer)]
-                       (.requestAnimationFrame js/window animate)
-                       (render)))]
-    (animate))
-  (create-renderer THREE))
+  (let [renderer (create-renderer THREE)]
+    (letfn [(animate []
+                     (.requestAnimationFrame js/window animate)
+                     (renderer))]
+      (animate))))
