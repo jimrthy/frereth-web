@@ -18,15 +18,14 @@
     (set! (.-wireframe obj) true)
     (let [material (THREE.MeshBasicMaterial. obj)
           mesh (THREE.Mesh. geometry material)
+          canvas (.getElementById js/document "view")
           ;; I really want a 2-d renderer for this
           ;; That used to be a CanvasRenderer
           ;; But apparently that's been deprecated back to a demo
-          renderer (THREE.WebGLRenderer.)]
+          ;; Q: Does this create the correct kind of javascript object?
+          renderer (THREE.WebGLRenderer. #js {:canvas canvas})]
       (.add scene mesh)
       (.setSize renderer (.-innerWidth js/window) (.-innerHeight js/window))
-      ;; Q: How do I position this over the REPL?
-      ;; Maybe more importantly, how do I just use an existing canvas?
-      (.appendChild (.-body js/document) (.-domElement renderer))
 
       ;; This is the part that actually does the drawing.
       ;; TODO: Should probably refactor this so the renderer is one thing,

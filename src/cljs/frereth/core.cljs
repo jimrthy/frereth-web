@@ -3,13 +3,12 @@
 
 Right now, that isn't the case at all."
     (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
-                     [schema.macros :as macros]
-                     [schema.core])
+                     [schema.macros :as sm]
+                     [schema.core :as s])
     (:require [cljs.core.async :as async]
               [frereth.dispatcher :as dispatcher]
               [frereth.globals :as global]
-              [frereth.repl :as repl]
-              [frereth.three :as three]
+              [frereth.world :as world]
               [taoensso.sente :as sente :refer (cb-success?)]
               [taoensso.timbre :as log]))
 (enable-console-print!)
@@ -120,8 +119,18 @@ Right now, that isn't the case at all."
 
 (defn -main
   []
-  (repl/start)
-  (three/start-graphics js/THREE)
+  (log/debug "Starting initial World")
+  (world/start)
+  (comment
+    ;; Can't do this before we've created the canvas for
+    ;; drawing everything.
+    ;; It's tempting to just make that a hard-coded piece of
+    ;; the HTML, but different worlds can and should update canvas
+    ;; parameters as needed.
+    ;; Moved this into repl/world-wrapper's did-update handler
+    (log/debug "Starting 3-D graphics")
+    (three/start-graphics js/THREE))
+  (log/debug "Initializing contact w/ outside world")
   (go
     (let [{:keys [pending-server-handshake]
            :as new-client-socket} (client-sock)

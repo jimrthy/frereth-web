@@ -1,14 +1,14 @@
 (ns frereth.repl
   "The absolte dumbest REPL implementation that I've been able to dream up"
   (:require-macros [cljs.core.async.macros :as asyncm :refer [go]]
-                   [schema.macros :as macros]
+                   [schema.macros :as sm]
                    [schema.core :as s])
   (:require [cljs.js :as cljs]
             [cljs.core.async :refer [put! <!] :as async]
             [frereth.globals :as global]
             [om.core :as om]
             [om.dom :as dom]
-            #_[schema.core :as s]))
+            [taoensso.timbre :as log]))
 
 (enable-console-print!)
 
@@ -49,7 +49,7 @@
    om/IRender
    (render
     [_]
-    (println "Rendering: " output " a " (type output))
+    (println "Printing eval result(s): " output " a " (type output))
     (let [table-style #js {:border "1px solid green;"}]
       (dom/tr nil
               ;; Q: How do I make this scrollable?
@@ -128,6 +128,9 @@
                                      (fn [xs]
                                        (conj xs forms response))))))))
 
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public
+
 (defn repl-wrapper
   [data owner]
   (reify
@@ -152,43 +155,34 @@
              (when-let [forms (<! evaluator)]
                (evaluate data forms))
              (recur)))))
+
     om/IRenderState
     (render-state
      [this state]
-     ;; Honestly, this is sideways.
-     ;; Really want to build the result columns up,
-     ;; then combine those individual components
-     ;; horizontally into a table
-     (let [repl (-> data :repls first)
-           heading (:heading repl)
-           output-rows (:output repl)
-           input (:input repl)
-           namespaces (:namespaces repl)
-           table-style #js {:border "1px solid black;"}]
-       (dom/table #js {:style table-style}
-                  (dom/tbody nil
-                             ;; Header: which REPL is this?
-                             (dom/tr nil
-                                     (dom/th #js {:style table-style} heading))
-                             ;; Output: what's come from the printer?
-                             (om/build printer output-rows)
-                             ;; Input: What is the user entering?
-                             (dom/tr nil
-                                     (dom/td #js {:style table-style}
-                                             (om/build reader input
-                                                       {:init-state state})))))))
+              ;; Honestly, this is sideways.
+              ;; Really want to build the result columns up,
+              ;; then combine those individual components
+              ;; horizontally into a table
+              (let [repl (-> data :repls first)
+                    heading (:heading repl)
+                    output-rows (:output repl)
+                    input (:input repl)
+                    namespaces (:namespaces repl)
+                    table-style #js {:border "1px solid black"}]
+                (dom/table #js {:style table-style}
+                           (dom/tbody nil
+                                      ;; Header: which REPL is this?
+                                      (dom/tr nil
+                                              (dom/th #js {:style table-style} heading))
+                                      ;; Output: what's come from the printer?
+                                      (om/build printer output-rows)
+                                      ;; Input: What is the user entering?
+                                      (dom/tr nil
+                                              (dom/td #js {:style table-style}
+                                                      (om/build reader input
+                                                                {:init-state state})))))))
     om/IWillUnmount
     (will-unmount
      [_]
      (comment (let [evaluator (om/get-state owner :evaluator)]
-                (async/close! evaluator))))))
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Public
-
-(defn start
-  []
-  (om/root
-   repl-wrapper
-   global/app-state
-   {:target (. js/document (getElementById "everything"))}))
+                (async/close! evaluator)))))  )
