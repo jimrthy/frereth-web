@@ -3,8 +3,8 @@
 
 Right now, that isn't the case at all."
     (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
-                     [schema.macros :as sm]
-                     [schema.core :as s])
+                     [schema.core :as s]
+                     [schema.macros :as sm])
     (:require [cljs.core.async :as async]
               [frereth.dispatcher :as dispatcher]
               [frereth.globals :as global]
