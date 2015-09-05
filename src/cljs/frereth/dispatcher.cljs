@@ -1,14 +1,14 @@
 (ns frereth.dispatcher
   (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
                    [ribol.cljs :refer [raise]]
-                   [schema.macros :as sm])
+)
   (:require [cljs.core.async :as async]
             [frereth.fsm :as fsm]
             [ribol.cljs :refer [create-issue
                                 *managers*
                                 *optmap*
                                 raise-loop]]
-            [schema.core :as s]
+            [schema.core :as s :include-macros true]
             [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -62,7 +62,7 @@ approach unified"
     (log/debug ":chsk/recv around a " event-type
                "\nMessage Body:\n" body)
     (condp = event-type
-      :frereth/initialize-world (fsm/transition-world body)
+      :frereth/initialize-world (fsm/initialize-world! body)
       ;; I'm getting this and don't know why.
       ;; TODO: Track it down
       :http/not-found (log/error "Server Did Not Find:\n" body)
@@ -96,7 +96,7 @@ approach unified"
     ;; Letting the server just take control here would be a horrible idea
     :frereth/initialize-world (do
                                 (log/info "Switching to new world")
-                                (fsm/transition-world ?data))
+                                (fsm/transition-world! ?data))
     :frereth/response (do
                         (log/debug "Request response received:\n"
                                    "I should try to do something intelligent with this,\n"

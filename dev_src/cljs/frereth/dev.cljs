@@ -1,6 +1,7 @@
 (ns frereth.dev
     (:require
      [frereth.core]
+     [frereth.globals :as global]
      [figwheel.client :as fw]))
 
 (enable-console-print!)

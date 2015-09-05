@@ -50,7 +50,12 @@ Right now, that isn't the case at all."
               (log/info "Background Async WS Loop: Heartbeat"))))
         (when-not @done
           (recur)))
-      (log/warn "Event Handler for " socket-description " exited"))))
+      ;; TODO: Really need to associate some sort of name/ID with
+      ;; each socket. It's confusing when figwheel reloads and a
+      ;; new one gets established.
+      ;; Honestly, that shouldn't happen.
+      ;; But I have other things that seem higher priority to worry about.
+      (log/warn "Event Handler for [ultimate ch-sock] exited"))))
 
 (defn client-sock
   []
