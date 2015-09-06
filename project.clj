@@ -69,11 +69,10 @@
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
                  [com.cognitect/transit-cljs "0.8.220"]
-                 ;; TODO: Try out 58
-                 ;; sente sample app is on 28
                  [org.clojure/clojurescript "1.7.48" :exclusions [org.clojure/clojure
                                                                         org.clojure/tools.reader]]
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
+                 [sablono "0.3.6"]
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
                                                  org.clojure/clojurescript]]
 
