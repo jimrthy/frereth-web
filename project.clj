@@ -52,7 +52,8 @@
                                                              riddley]]
                  ;; immutant is schizophrenic about which version it uses
                  [org.slf4j/slf4j-api "1.7.6"]  ; TODO: Try bumping to 12
-                 [prismatic/fnhouse "0.1.2" :exclusions [prismatic/plumbing]]
+                 ;; TODO: Get my changes PR'd back
+                 [jimrthy/fnhouse "0.1.3-SNAPSHOT" :exclusions [prismatic/plumbing]]
                  [ring/ring-core "1.4.0" :exclusions [commons-codec
                                                           joda-time
                                                           org.clojure/clojure
