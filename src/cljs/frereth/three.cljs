@@ -42,11 +42,11 @@
       ;; the rendering-fn the part that gets swapped out all the time
       (fn []
         ;; TODO: Only change the color when state changes
-        (when (= (global/get-world-state :splash) :connecting)
-          ;; This doesn't seem to work.
-          ;; Q: Is it too late after the material has been assigned to the scene?
-          (log/debug "Switching cube color to yellow")
-          (set! (.-color obj) 0xffff00))
+        (comment (when (= (global/get-world-state :splash) :connecting)
+                   ;; This doesn't seem to work.
+                   ;; Q: Is it too late after the material has been assigned to the scene?
+                   (log/debug "Switching cube color to yellow")
+                   (set! (.-color obj) 0xffff00)))
         (set! (.-x (.-rotation mesh)) (+ (.-x (.-rotation mesh)) 0.01))
         (set! (.-y (.-rotation mesh)) (+ (.-y (.-rotation mesh)) 0.02))
         (.render renderer scene camera)))))
