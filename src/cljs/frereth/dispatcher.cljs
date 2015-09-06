@@ -1,9 +1,9 @@
 (ns frereth.dispatcher
   (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
-                   [ribol.cljs :refer [raise]]
-)
+                   [ribol.cljs :refer [raise]])
   (:require [cljs.core.async :as async]
             [frereth.fsm :as fsm]
+            [frereth.globals :as global]
             [ribol.cljs :refer [create-issue
                                 *managers*
                                 *optmap*
@@ -88,7 +88,7 @@ approach unified"
   ;; anything more involved is YAGNI
   (condp = id
     :chsk/handshake (do (log/info "Initial Channel Socket Handshake received")
-                        (log/error "TODO: Update the splash screen animation")
+                        (global/swap-world-state! :splash (constantly :connecting))
                         (send-standard-event send-fn :frereth/blank-slate {}))
     :chsk/recv (real-dispatcher ?data)
     :chsk/state (log/info "ChannelSock State message received:\n"

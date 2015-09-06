@@ -1,8 +1,16 @@
-(ns ^:figwheel-load frereth.globals)
+(ns ^:figwheel-load frereth.globals
+    (:require [schema.core :as s :include-macros true]))
 
-;;;; define your app data so that it doesn't get over-written on reload
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Schema
 
-(defonce app-state (atom {;; Part the renderer will use to decide what to draw
+(def world-id (s/either s/Keyword s/Str s/Uuid))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Internal
+
+(defonce app-state
+  (atom {;; Part the renderer will use to decide what to draw
                           :worlds {:splash {:state :initializing
                                             :repl {:heading "Local"
                                                    :output []
@@ -22,3 +30,29 @@
                           ;; renders *->1 client
                           ;; client 1->* servers
                           :channel-socket nil}))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Public
+
+(s/defn swap-world-state!
+  [which :- world-id
+   f :- (s/=> s/Any s/Any)]
+  (swap! app-state
+         (fn [existing]
+           (update-in existing [:worlds which :state] f))))
+
+(defn get-world-state
+  "Returns the current state associated w/ the specified world
+
+Really just a helper function because I'm not crystal-clear on the shape of the
+app-state atom"
+  [world-key]
+  (-> app-state deref :worlds world-key :state))
+
+(defn get-active-world
+  []
+  (-> app-state deref :active-world))
+
+(defn get-active-world-state
+  []
+  (get-world-state (get-active-world)))

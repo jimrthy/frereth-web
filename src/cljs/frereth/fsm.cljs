@@ -13,18 +13,16 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-(def world-id (s/either s/Keyword s/Str s/Uuid))
-
 (def generic-world-description
   {:data {:type s/Keyword
           :version s/Any}
-   :name world-id
+   :name global/world-id
    s/Keyword s/Any
    s/Str s/Any})
 
 (def renderable-world-description
   {:renderer (s/=> s/Any)
-   :name world-id})
+   :name global/world-id})
 
 (defmulti pre-process
   "Convert the supplied world description into something generically useful/usable"

@@ -50,7 +50,7 @@
    (render
     [_]
     (println "Printing eval result(s): " output " a " (type output))
-    (let [table-style #js {:border "1px solid green;"}]
+    (let [table-style #js {:border "1px solid green"}]
       (dom/tr nil
               ;; Q: How do I make this scrollable?
               (dom/td #js {:style table-style}
