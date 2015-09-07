@@ -69,6 +69,13 @@ approach unified"
       :else (log/error "Unhandled event-type: " event-type
                        "\nMessage Body:\n" (pr-str body)))))
 
+(defn send-blank-slate!
+  "Have client notify a server that we want to learn about its world(s)
+
+TODO: Specify which server. This shouldn't always be local"
+  [send-fn]
+  (send-standard-event send-fn :frereth/blank-slate {}))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
@@ -89,7 +96,7 @@ approach unified"
   (condp = id
     :chsk/handshake (do (log/info "Initial Channel Socket Handshake received")
                         (global/swap-world-state! :splash (constantly :connecting))
-                        (send-standard-event send-fn :frereth/blank-slate {}))
+                        (send-blank-slate! send-fn))
     :chsk/recv (real-dispatcher ?data)
     :chsk/state (log/info "ChannelSock State message received:\n"
                           ?data)

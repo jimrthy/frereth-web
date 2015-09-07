@@ -6,6 +6,7 @@
                                 *managers*
                                 *optmap*
                                 raise-loop]]
+            [sablono.core :as sablono :include-macros true]
             [schema.core :as s :include-macros true]
             [taoensso.timbre :as log])
   (:require-macros [ribol.cljs :refer [raise]]))
@@ -24,8 +25,10 @@
   {:renderer (s/=> s/Any)
    :name global/world-id})
 
-(defmulti pre-process
-  "Convert the supplied world description into something generically useful/usable"
+(defmulti pre-process-body
+  "Convert the supplied world description into something generically useful/usable
+
+TODO: This really should happen in the client"
   (fn
     [{:keys [data] :as new-world}]
     (let [{:keys [type version]} data]
@@ -34,7 +37,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(s/defmethod pre-process [:html 5] :- renderable-world-description
+(s/defmethod pre-process-body [:html 5] :- renderable-world-description
   [{:keys [body css script] :as html}]
   (log/debug "Switching to HTML 5")
   (raise {:not-implemented "This is more complicated/dangerous than it looks at first glance"})
@@ -46,12 +49,17 @@
                       ;; This approach fails completely
                       (log/debug "HTML 5: simplest approach I can imagine: just return " (pr-str body))
                       body)))]
-    {:name (s/either s/Keyword s/Str)
+    {:name (s/conditional s/Keyword s/Str)
      :renderer renderer}))
 
-(s/defmethod pre-process [:om [0 9 0]] :- renderable-world-description
-  []
+(s/defmethod pre-process-body [:om [0 9 0]] :- renderable-world-description
+  [_]
   (raise {:not-implemented "What does this even look like?"}))
+
+;; Q: Is there an equivalent of defnk that I can use?
+(s/defmethod pre-process-body [:sablono [0 3 6]] :- renderable-world-description
+  [body]
+  (sablono/html body))
 
 (s/defn make-renderable!
   "This isn't named particularly well.
@@ -59,13 +67,15 @@
 Nothing better comes to mind at the moment."
   [descr :- renderable-world-description]
   (let [name (:name descr)
-        pre-processed (pre-process descr)]
+        body (get-in descr [:data :body])
+        pre-processed (pre-process-body body)]
     (swap! global/app-state (fn [current]
                               ;; Add newly created world to the set we know about
                               ;; TODO: Seems like we might want to consider closing
                               ;; out older, unused worlds.
                               ;; That is an end-user's decision to make
-                              (assoc-in current [:worlds name] pre-processed)))))
+                              (assoc-in current [:worlds name] (assoc (:data body)
+                                                                      :body pre-processed))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
