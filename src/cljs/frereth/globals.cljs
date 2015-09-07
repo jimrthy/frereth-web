@@ -4,7 +4,9 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-(def world-id (s/either s/Keyword s/Str s/Uuid))
+;; TODO: Move this into common
+;; After I figure out how to get it to actually work
+(def world-id #_(s/conditional s/Keyword s/Str s/Uuid) s/Any)
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal

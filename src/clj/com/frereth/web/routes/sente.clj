@@ -22,7 +22,7 @@
   ;; This renderer will be trying to connect soon, so
   ;; the upstream pieces might as well be ready to
   ;; kick off the action.
-  (log/warn "Client should ensure login dialog is fresh")
+  (log/warn "Have Client freshen login dialog")
   (let [handler (:ring-ajax-get-or-ws-handshake ch-sock)
         response (handler request)]
     response))

@@ -183,7 +183,7 @@ Besides, it's much more readable this way"
   (if (= ch rcvr)
     (do
       (comment (log/debug "Incoming message from a browser"))
-       (event-handler web-sock-handler msg))
+      (event-handler web-sock-handler msg))
     (let [responder (:response msg)]
       (log/debug "Status check")
       (when-not responder
