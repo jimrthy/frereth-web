@@ -115,6 +115,7 @@ sente at all."
 (s/defn not-found
   [this :- WebSockHandler
    ev-msg]
+  (log/error "No handler for:\n" (util/pretty ev-msg))
   (reply this ev-msg :http/not-found {:status 404 :body "\"Not Found\""}))
 
 (s/defn forward

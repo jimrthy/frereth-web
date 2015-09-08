@@ -49,7 +49,7 @@
 Really just a helper function because I'm not crystal-clear on the shape of the
 app-state atom"
   [world-key]
-  (-> app-state deref :worlds world-key :state))
+  (-> app-state deref :worlds (get world-key) :state))
 
 (defn get-active-world
   []

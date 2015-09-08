@@ -5,6 +5,9 @@
                    [schema.core :as s])
   (:require [cljs.js :as cljs]
             [cljs.core.async :refer [put! <!] :as async]
+            ;; TODO: Really shouldn't be referencing this here
+            ;; It's strictly because my hand-shaking is buggy
+            [frereth.dispatcher :as dispatcher]
             [frereth.globals :as global]
             [om.core :as om]
             [om.dom :as dom]
@@ -95,7 +98,12 @@
                                      (put! evaluator forms)
                                      true)))
                       :value "Eval!"}
-                 nil)))))
+                 nil)
+      (dom/input #js {:type "button"
+                      :onClick (fn [e]
+                                 (let [send-fn (-> global/app-state deref :channel-socket :send!)]
+                                   (dispatcher/send-blank-slate! send-fn)))
+                      :value "Reconnect"})))))
 
 (defn evaluate
   [cursor forms]

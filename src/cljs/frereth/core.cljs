@@ -24,21 +24,13 @@ Right now, that isn't the case at all."
       (loop []
         (log/debug "Top of websocket event handling loop")
         (let [event-pair
-              (try
-                (async/alts! [(async/timeout five-minutes-in-ms) recv])
-                (catch js/Error ex
-                  ;; I'm getting an Error that looks like it's happening here
-                  ;; that "[object Object] is not ISeqable"
-                  ;; This isn't the case, since we just yielded control
-                  ;; to wait on the incoming event
-                  (log/error ex "Yep, trying to call alts! is failing")))
+              (async/alts! [(async/timeout five-minutes-in-ms) recv])
               [incoming ch] event-pair]
           (if (= recv ch)
             (try
               ;; Or maybe this is the start of a message batch?
               ;; This is really a pair of async-receive-channel
               ;; and send function
-              (log/debug "Incoming message:\n")
               (if incoming
                 (dispatcher/handle! incoming)
                 (do
@@ -47,7 +39,7 @@ Right now, that isn't the case at all."
               (catch js/Object ex
                 (log/error ex "Error escaped event handler")))
             (do
-              (log/info "Background Async WS Loop: Heartbeat"))))
+              (log/debug "Background Async WS Loop: Heartbeat"))))
         (when-not @done
           (recur)))
       ;; TODO: Really need to associate some sort of name/ID with
