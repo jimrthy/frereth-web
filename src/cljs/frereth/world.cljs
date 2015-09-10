@@ -10,8 +10,9 @@
             [om.dom :as dom]
             [taoensso.timbre :as log]))
 
-;; FIXME: Debug only
-(enable-console-print!)
+(defn static-body
+  [data]
+  (om/component data))
 
 (defn world-wrapper
   [data owner]
@@ -38,14 +39,20 @@
                                (-> data keys  pr-str))
                     (if-let [body (:body active-world)]
                       (do
+                        (log/debug "Have a body")
                         (dom/div nil
                                  ;; This is really the background
                                  ;; Q: What does this part actually look like?
-                                 (om/build body (:state active-world))
+                                 (om/build static-body body)
                                  ;; TODO: Position this over that background
                                  ;; Although, honestly, there are a lot of times we won't need it.
                                  (dom/canvas #js {:id "view"})))
-                      (dom/canvas #js {:id "view"})))))
+                      ;; TODO: If there's a...what?
+                      ;; something like a renderer/body namespace attached to the compiled
+                      ;; script, treat that as a Component that we can om/build
+                      (do
+                        (log/debug "Falling back to just drawing a plain canvas")
+                        (dom/canvas #js {:id "view"}))))))
               (om/build repl/repl-wrapper (:repls data))))
 
     om/IDidMount
