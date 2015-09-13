@@ -1,6 +1,8 @@
 (ns frereth.fsm
   "This is a misnomer. But I have to start somewhere."
-  (:require [cljs.js :as cljs]
+  (:require [cljs.core.async :as async]
+            [cljs.js :as cljs]
+            [cljs-uuid-utils.core :as uuid]
             [frereth.globals :as global]
             [om.core :as om]
             [ribol.cljs :refer [create-issue
@@ -10,7 +12,9 @@
             [sablono.core :as sablono :include-macros true]
             [schema.core :as s :include-macros true]
             [taoensso.timbre :as log])
-  (:require-macros [ribol.cljs :refer [raise]]))
+  (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
+                   [ribol.cljs :refer [raise]])
+  (:import [goog.net XhrIo]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -74,7 +78,7 @@ TODO: This really should happen in the client"
 (s/defn pre-process-script
   [name
    forms]
-  (let [compiler-state (cljs/empty-state)]
+  (let [compiler-state (raise {:not-implemented "Pull from init'd world"})]
     (doseq [form forms]
       (cljs/eval compiler-state
                  form
@@ -123,10 +127,126 @@ Nothing better comes to mind at the moment."
                                                :repl {:state compiler-state}
                                                :css styling))))))
 
+(defn get-file
+  "Copied straight from swannodette's cljs-bootstrap sample
+
+TODO: Load this over sente instead"
+  [url]
+  (let [c (async/chan)]
+    (.send XhrIo url
+           (fn [e]
+             (comment
+               (log/info "Server response re: "
+                         url
+                         "\n"
+                         (pr-str e)
+                         "\naka\n"
+                         ;; Object is not ISeqable
+                         #_(mapcat (fn [[k v]]
+                                     (str "\n" k " : " v))
+                                   e)
+                         #_(pr-str (js->clj e :keywordize-keys true)))
+               ;; This is really what I was looking for
+               (.dir js/console e))
+             (let [target (.-target e)
+                   outcome {(if (.isSuccess target)
+                              :success
+                              :fail)
+                            (.getResponseText target)}]
+               (async/put! c outcome))))
+    c))
+
+(defn bootstrap-loader
+  "How the initial bootstrapper can locate the namespace(s) it must have.
+TODO: Worlds really need a way to specify their own loader, once they've been bootstrapped."
+  [{:keys [name macros path] :as libspec}
+   cb]
+  (log/debug "Trying to load" name "at" path)
+  (comment
+    ;; TODO: Actually load the requested library
+    ;; If macros is true, search for .clj, then .cljc
+    ;; Otherwise, search for .cljs, cljc, and .js (in order)
+    (let [language :clj  ; or :js
+          source (raise {:not-implemented "Actual source for the requested lib"})
+          ;; If :clj has been precompiled to :js, can give an analysis cache for faster loads
+          cache nil
+          ;; Will almost always want something here
+          source-map nil]
+      (let [result {:lang lang
+                    :source source
+                    :cache cache
+                    :source-map source-map}]
+        (cb result))))
+
+  (let [url (str "/library-source/" name (when macros "?macro=true"))
+        responder (get-file url)]
+    (go
+      (let [response (async/<! responder)]
+        (log/debug "Response from server:\n"
+                   (pr-str response))
+        (let [{:keys [error success]} response]
+          (if success
+            (cb success)
+            (do
+              (log/error error)
+              (cb nil))))))))
+
+(defn initialize-compiler
+  "Set up a compilation environment that's ready to be useful
+
+TODO: Desperately needs to be memoized
+
+This feels more than a little heavy-handed. Surely there are environments which
+won't need/want this full treatment.
+"
+  [outcome-chan]
+  (log/debug "Initializing compiler")
+  ;; Note that empty-state accepts an init function
+  (let [st (cljs/empty-state)
+        namespace-declaration '(ns empty.world
+                                 "Need a naming scheme
+Although, honestly, for now, user makes as much sense as any"
+                                 (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)])
+                                 (:require [cljs.core.async :as async]
+                                           [goog.dom :as dom]
+                                           [goog.events :as events]))]
+    (cljs/eval st
+               namespace-declaration
+               {:eval cljs/js-eval
+                :load bootstrap-loader}
+               (fn [{:keys [error value]}]
+                 (if error
+                   (do
+                     (log/error error)
+                     ;; Take the sledge-hammer approach
+                     (async/close! outcome-chan))
+                   (do
+                     (log/info "Loaded successfully! (and there was much rejoicing)")
+                     (async/put! outcome-chan st)))))))
+
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+;;;
+;;; N.B. Start w/ initialize-world! as a blank default
+;;; When we have a description, call start-world! on it
+;;; Use transition-to-world! to make a given world active
 
-(defn transition-world!
+(s/defn initialize-world! :- s/Str
+  "TODO: Really need a way to load multiple views of the same world instance"
+  [url :- s/Str]
+  (let [world-id (uuid/make-random-uuid)
+        listener (async/chan)
+        responder (async/chan)
+        listening-loop (go
+                         (when-let [initial-compiler-state (async/<! listener)]
+                           (async/close! responder)
+                           (do
+                             (raise {:not-implemented "Need to set up a map in globals with a cljs compiler environment"})
+                             (async/put! responder world-id))))]
+    (initialize-compiler listener)
+    responder))
+
+(defn transition-to-world!
   [to-activate]
   (log/debug "Trying to activate world: '" (pr-str to-activate) "'")
   (swap! global/app-state (fn [current]
@@ -134,10 +254,14 @@ Nothing better comes to mind at the moment."
                               (assoc current :active-world to-activate)
                               (raise {:unknown-world to-activate})))))
 
-(defn initialize-world!
+(s/defn start-world!
   "Let's get this party started!
 
+Server has returned bootstrap info.
+
 This is really just the way the world bootstraps.
+
+It seems like this conflicts w/ transition-world!, but it really doesn't.
 
 It needs to send us enough initial info to start loading the full thing.
 
@@ -151,28 +275,34 @@ TODO: Limit the amount of time spent here
 Q: Can I do that by sticking it in a go loop, trying to alts! it
 with a timeout, and then somehow cancelling the transaction if it times
 out?"
-  [{:keys [data]
-    :as description}]
-  (let [{:keys [action-url
-                expires
-                session-token
-                world]
-         :as destination} data]
-    (log/info "=========================================
+  ([{:keys [data]
+     :as description}
+    transition :- s/Bool]
+   (let [{:keys [action-url
+                 expires
+                 request-id
+                 session-token
+                 world]
+          :as destination} data]
+     (raise {:not-implemented "Already have world initialized"})
+     (log/info "=========================================
 This is important!!!!!
 Initializing '"
-              (pr-str (:name data))
-              "' World:
+               (pr-str (:name data))
+               "' World:
 =========================================\n"
-              destination)
-    (try
-      (log/debug "Keys in new world body: " (keys destination))
-      (catch js/Error ex
-        (log/error "This really isn't a legal world description")))
+               destination)
+     (try
+       (log/debug "Keys in new world body: " (keys destination))
+       (catch js/Error ex
+         (log/error "This really isn't a legal world description")))
 
-    (when (= description :hold-please)
-      (raise {:obsolete "Why don't I have the handshake toggle fixed?"}))
-    (make-renderable! description))
-  ;; Just binding this in keys caused issues with trying to shadow the built-in
-  (let [world-name (:name data)]
-    (transition-world! world-name)))
+     (when (= description :hold-please)
+       (raise {:obsolete "Why don't I have the handshake toggle fixed?"}))
+     (make-renderable! description)
+     ;; It's very tempting to call transition-to-world! as the next step
+     ;; But, really, that's up to the caller
+     (when transition
+       (transition-to-world! request-id))))
+  ([data]
+   (start-world! data false)))

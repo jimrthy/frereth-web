@@ -59,9 +59,12 @@
   [THREE]
   (let [renderer (create-renderer THREE)]
     (letfn [(animate []
-                     (if (= (global/get-active-world) :splash)
-                       (do
-                         (.requestAnimationFrame js/window animate)
-                         (renderer))
-                       (log/error "TODO: Watch for world state returning to splash")))]
+                     (let [active-world (global/get-active-world)]
+                       (if (or (nil? active-world)
+                               ;; TODO: The :splash world should be gone
+                               (= active-world :splash))
+                         (do
+                           (.requestAnimationFrame js/window animate)
+                           (renderer))
+                         (log/error "TODO: Watch for world state returning to splash"))))]
       (animate))))

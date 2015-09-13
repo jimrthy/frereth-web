@@ -214,10 +214,11 @@ the event loop"
            event-loop
            (async/go
              (loop []
-               (comment) (log/debug "Top of websocket event loop\n" (util/pretty {:stopper stopper
-                                                                                  :receiver rcvr
-                                                                                  :ws-controller ws-controller
-                                                                                  :web-sock-handler ((complement nil?) web-sock-handler)}))
+               (log/debug "Top of websocket event loop\n" (util/pretty {:stopper stopper
+                                                                        :receiver rcvr
+                                                                        :ws-controller ws-controller
+                                                                        :web-sock-handler ((complement nil?) web-sock-handler)}))
+               ;; TODO: I'm pretty sure I have 5 minutes defined somewhere useful
                (let [t-o (async/timeout (* 1000 60 5))
                      [v ch] (async/alts! [t-o stopper rcvr ws-controller])]
                  (if v
@@ -248,7 +249,7 @@ the event loop"
        exit-fn))))
 
 ;; For testing a status request
-;; Wrote it to debug what was going on w/ my
+;; Wrote this to debug what was going on w/ my
 ;; disappearing event loop, then spotted that
 ;; problem before I had a chance to test this.
 ;; I really think this is/will be useful, but
@@ -316,6 +317,7 @@ the event loop"
         send! (:send! ch-sock)]
     (doseq [uid uids]
       (send! uid msg))))
+;; Just for testing that in REPL
 (comment (broadcast!
           (:http-router dev/system)
           [:frereth/ping nil]))

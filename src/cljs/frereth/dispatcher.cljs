@@ -54,7 +54,7 @@ approach unified"
   (let [event [event-type event-data]]
     (send-fn event event-response-timeout-ms (partial standard-cb-notification event))))
 
-(s/defn real-dispatcher
+(defn real-dispatcher
   [event]
   (log/debug "real-dispatcher handling:\n" event)
   (let [[event-type
@@ -62,19 +62,48 @@ approach unified"
     (log/debug ":chsk/recv around a " event-type
                "\nMessage Body:\n" body)
     (condp = event-type
-      :frereth/initialize-world (fsm/initialize-world! body)
+      :frereth/start-world (fsm/start-world! body true)
       ;; I'm getting this and don't know why.
       ;; TODO: Track it down
       :http/not-found (log/error "Server Did Not Find:\n" body)
       :else (log/error "Unhandled event-type: " event-type
                        "\nMessage Body:\n" (pr-str body)))))
 
-(defn send-blank-slate!
-  "Have client notify a server that we want to learn about its world(s)
+(s/defn send-blank-slate!
+  "Have client notify a server that we want to learn about its world(s)"
+  [send-fn
+   world-id :- s/Str
+   world-url :- global/world-url]
+  (send-standard-event send-fn :frereth/blank-slate {:url world-url
+                                                     :request-id world-id}))
 
-TODO: Specify which server. This shouldn't always be local"
+(defn connect-to-initial-world!
   [send-fn]
-  (send-standard-event send-fn :frereth/blank-slate {}))
+  ;; It seems more than a little wrong to just arbitrarily update
+  ;; the currently active world state.
+  ;; What if the connection drops then reloads?
+  ;; TODO: This really should be all about the "localhost"
+  ;; default connection. Which, really, is pretty special.
+  (if-let [active-world (global/get-active-world)]
+    (do
+      ;; Actually, we should already have switched, due to a dropped connection event
+      ;; This should actually let us switch back to the world we care about
+      ;; Although there are probably plenty of worlds that couldn't care less about
+      ;; the connection.
+      ;; Like, say, one for playing solitaire.
+      (raise {:not-implemented "Really need to switch back to initial world and indicate dropped connection"})
+      (global/swap-world-state! active-world (constantly :re-connecting)))
+    ;; Set up the "real" initial world
+    (let [localhost {:protocol :tcp
+                     :address "127.0.0.1"
+                     :port 7848
+                     :path "get-login"}
+          response-chan (fsm/initialize-world! localhost)]
+      (go
+        (if-let [world-id (async/<! response-chan)]
+          (send-blank-slate! send-fn world-id localhost)
+          (log/error "Failed to initialize a new world at\n"
+                     (pr-str localhost)))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -95,15 +124,15 @@ TODO: Specify which server. This shouldn't always be local"
   ;; anything more involved is YAGNI
   (condp = id
     :chsk/handshake (do (log/info "Initial Channel Socket Handshake received")
-                        (global/swap-world-state! :splash (constantly :connecting))
-                        (send-blank-slate! send-fn))
+                        (connect-to-initial-world! send-fn))
     :chsk/recv (real-dispatcher ?data)
     :chsk/state (log/info "ChannelSock State message received:\n"
                           ?data)
     ;; Letting the server just take control here would be a horrible idea
     :frereth/initialize-world (do
                                 (log/info "Switching to new world")
-                                (fsm/transition-world! ?data))
+                                (raise {:obsolete "This really comes in as a :chsk/recv message"})
+                                (fsm/transition-to-world! ?data))
     :frereth/response (do
                         (log/debug "Request response received:\n"
                                    "I should try to do something intelligent with this,\n"
