@@ -128,10 +128,9 @@ Nothing better comes to mind at the moment."
                                                :css styling))))))
 
 (defn get-file
-  "Copied straight from swannodette's cljs-bootstrap sample
-
-TODO: Load this over sente instead"
+  "Copied straight from swannodette's cljs-bootstrap sample"
   [url]
+  (raise :not-implemented "TODO: Load this over sente instead")
   (let [c (async/chan)]
     (.send XhrIo url
            (fn [e]
@@ -203,6 +202,7 @@ won't need/want this full treatment.
   (log/debug "Initializing compiler")
   ;; Note that empty-state accepts an init function
   (let [st (cljs/empty-state)
+        _ raise {:obsolete "Do everything else from server"}
         namespace-declaration '(ns empty.world
                                  "Need a naming scheme
 Although, honestly, for now, user makes as much sense as any"

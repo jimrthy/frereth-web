@@ -1,14 +1,13 @@
 (ns com.frereth.web.loader
   "Feeding raw script objects to the browser
 
-I'm very torn about whether this belongs here or in the client
+This approach made sense at first, but it simply does
+not belong here. Unless I can think of some universal
+library that absolutely every client should load/run,
+above and on top of the core clojure namespaces.
 
-But it *is* pretty clojurescript specific. So going with this approach for now.
-
-Note that specialized scripts (such as anything that doesn't really belong in core)
-should come from whichever server told the client to request them.
-
-Defining 'what really belong[s] in core' is worth a lot of consideration"
+This belongs on the server
+"
   (:require [clojure.string :as string]
             [clojure.java.io :as io]
             [ribol.core :refer [raise]]
@@ -47,8 +46,10 @@ Defining 'what really belong[s] in core' is worth a lot of consideration"
 
 (s/defn load-fn-ns :- (s/maybe s/Str)
   [module-name :- s/Str]
+  (raise :not-implemented {"don't do this here"})
   (load-cljs-namespace module-name ["cljs" "cljc" "js"]))
 
 (s/defn load-macros :- (s/maybe s/Str)
   [module-name :- s/Str]
+  (raise :not-implemented {"don't do this here"})
   (load-cljs-namespace module-name ["clj" "cljc"]))
