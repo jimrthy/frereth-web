@@ -19,6 +19,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
+(def compiler-black-box
+  "Doesn't really belong in here, but it'll do as a start"
+  s/Any)
+
 (def generic-world-description
   {:data {:type s/Keyword
           :version s/Any}
@@ -75,6 +79,32 @@ TODO: This really should happen in the client"
   [body]
   (sablono/html body))
 
+(defn bootstrap-loader
+  "How the initial bootstrapper can locate the namespace(s) it must have.
+TODO: Worlds really need a way to specify their own loader, once they've been bootstrapped."
+  [{:keys [name macros path] :as libspec}
+   cb]
+  (log/debug "Trying to load" name "at" path)
+  (comment
+    ;; This is what the server needs to do
+    ;; TODO: Actually load the requested library
+    ;; If macros is true, search for .clj, then .cljc
+    ;; Otherwise, search for .cljs, cljc, and .js (in order)
+    (let [language :clj  ; or :js
+          source (raise {:not-implemented "Actual source for the requested lib"})
+          ;; If :clj has been precompiled to :js, can give an analysis cache for faster loads
+          cache nil
+          ;; Will almost always want something here
+          source-map nil]
+      (let [result {:lang lang
+                    :source source
+                    :cache cache
+                    :source-map source-map}]
+        (cb result))))
+  (let [request {:module-name name, :macro? macros :path path}]
+    ;; Really have to specify the destination server
+    (raise {:not-implemented "Write the rest of this"})))
+
 (s/defn pre-process-script
   [name
    forms]
@@ -82,17 +112,8 @@ TODO: This really should happen in the client"
     (doseq [form forms]
       (cljs/eval compiler-state
                  form
-                 {;; According to the docstring, this is the only
-                  ;; parameter in this map that has any effect.
-                  :eval cljs/js-eval
-                  :context :expr
-                  :def-emits-var true
-                  ;; This works for starters
-                  ;; TODO: Server really should have supplied
-                  ;; ns forms
-                  :ns 'user
-                  :source-map true
-                  :verbose true}
+                 {:eval cljs/js-eval
+                  :load loader}
                  (fn [{:keys [error ns value] :as res}]
                    (log/debug "Evaluating initial forms for "
                               name
@@ -146,6 +167,8 @@ Nothing better comes to mind at the moment."
                                    e)
                          #_(pr-str (js->clj e :keywordize-keys true)))
                ;; This is really what I was looking for
+               ;; TODO: Turn this into a utility function, if only so I
+               ;; don't have to keep digging around for it
                (.dir js/console e))
              (let [target (.-target e)
                    outcome {(if (.isSuccess target)
@@ -154,41 +177,6 @@ Nothing better comes to mind at the moment."
                             (.getResponseText target)}]
                (async/put! c outcome))))
     c))
-
-(defn bootstrap-loader
-  "How the initial bootstrapper can locate the namespace(s) it must have.
-TODO: Worlds really need a way to specify their own loader, once they've been bootstrapped."
-  [{:keys [name macros path] :as libspec}
-   cb]
-  (log/debug "Trying to load" name "at" path)
-  (comment
-    ;; TODO: Actually load the requested library
-    ;; If macros is true, search for .clj, then .cljc
-    ;; Otherwise, search for .cljs, cljc, and .js (in order)
-    (let [language :clj  ; or :js
-          source (raise {:not-implemented "Actual source for the requested lib"})
-          ;; If :clj has been precompiled to :js, can give an analysis cache for faster loads
-          cache nil
-          ;; Will almost always want something here
-          source-map nil]
-      (let [result {:lang lang
-                    :source source
-                    :cache cache
-                    :source-map source-map}]
-        (cb result))))
-
-  (let [url (str "/library-source/" name (when macros "?macro=true"))
-        responder (get-file url)]
-    (go
-      (let [response (async/<! responder)]
-        (log/debug "Response from server:\n"
-                   (pr-str response))
-        (let [{:keys [error success]} response]
-          (if success
-            (cb success)
-            (do
-              (log/error error)
-              (cb nil))))))))
 
 (defn initialize-compiler
   "Set up a compilation environment that's ready to be useful
@@ -201,28 +189,27 @@ won't need/want this full treatment.
   [outcome-chan]
   (log/debug "Initializing compiler")
   ;; Note that empty-state accepts an init function
-  (let [st (cljs/empty-state)
-        _ raise {:obsolete "Do everything else from server"}
-        namespace-declaration '(ns empty.world
-                                 "Need a naming scheme
-Although, honestly, for now, user makes as much sense as any"
-                                 (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)])
-                                 (:require [cljs.core.async :as async]
-                                           [goog.dom :as dom]
-                                           [goog.events :as events]))]
-    (cljs/eval st
-               namespace-declaration
-               {:eval cljs/js-eval
-                :load bootstrap-loader}
-               (fn [{:keys [error value]}]
-                 (if error
-                   (do
-                     (log/error error)
-                     ;; Take the sledge-hammer approach
-                     (async/close! outcome-chan))
-                   (do
-                     (log/info "Loaded successfully! (and there was much rejoicing)")
-                     (async/put! outcome-chan st)))))))
+  ;; Q: What's that for?
+  (cljs/empty-state)
+  (comment
+    ;; This can all go away, as soon as I have the "real" evaluator
+    ;; using a loader that points to the appropriate server
+    (let [st (cljs/empty-state)
+          _ raise {:obsolete "Do everything else from server"}
+          namespace-declaration ']
+      (cljs/eval st
+                 namespace-declaration
+                 {:eval cljs/js-eval
+                  :load bootstrap-loader}
+                 (fn [{:keys [error value]}]
+                   (if error
+                     (do
+                       (log/error error)
+                       ;; Take the sledge-hammer approach
+                       (async/close! outcome-chan))
+                     (do
+                       (log/info "Loaded successfully! (and there was much rejoicing)")
+                       (async/put! outcome-chan st))))))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -233,18 +220,9 @@ Although, honestly, for now, user makes as much sense as any"
 
 (s/defn initialize-world! :- s/Str
   "TODO: Really need a way to load multiple views of the same world instance"
-  [url :- s/Str]
-  (let [world-id (uuid/make-random-uuid)
-        listener (async/chan)
-        responder (async/chan)
-        listening-loop (go
-                         (when-let [initial-compiler-state (async/<! listener)]
-                           (async/close! responder)
-                           (do
-                             (raise {:not-implemented "Need to set up a map in globals with a cljs compiler environment"})
-                             (async/put! responder world-id))))]
-    (initialize-compiler listener)
-    responder))
+  []
+  {:world-id (uuid/make-random-uuid)
+   :compiler-state (initialize-compiler)})
 
 (defn transition-to-world!
   [to-activate]

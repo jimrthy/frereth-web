@@ -150,6 +150,11 @@ sente at all."
   ;; Might as well take advantage of what's available
   (log/debug "Pinged!\nTODO: Forward this along to the server"))
 
+(s/defn request-ns-load!
+  [this :- WebSockHandler
+   {:keys [module-name macro?] :as data}]
+  (raise {:not-implemented "Forward to server"}))
+
 (s/defn event-handler
   [this :- WebSockHandler
    {:keys [id ?data event] :as ev-msg}]
@@ -165,6 +170,7 @@ sente at all."
   (match [id ?data]
          [:chsk/ws-ping _] (ping this ev-msg)
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
+         [:frereth/load-ns] (request-ns-load! this ?data)
          [:frereth/pong _] (forward this ev-msg)
          [:frereth/response _] (log/info "Response from renderer:\n"
                                          (util/pretty ?data))
