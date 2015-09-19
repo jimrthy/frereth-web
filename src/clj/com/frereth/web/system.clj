@@ -75,7 +75,10 @@ extra-files: seq of absolute file paths to merge in. For
   [command-line-args
    config-file-name :- s/Str]
 
-  ;; Q: Do I want to go back to this original, commented-out version?
+  ;; Q: Do I want to go back to something more similar to this
+  ;; original, commented-out version?
+  ;; (i.e. where I load the EDN description from a file instead
+  ;; of hard-coding it here)
   (comment
     (let [system-description (-> system-description-file-name
                                  io/resource

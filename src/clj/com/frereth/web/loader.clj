@@ -17,26 +17,10 @@ This belongs on the server
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(s/defn find-namespace :- (s/maybe URL)
-  [module-name :- s/Str
-   extension-search-order :- [s/Str]]
-  (let [names (string/split module-name #"\.")
-        folder-names (butlast names)
-        file-name (last names)
-        path (str "public/js/compiled/" (string/join "/" folder-names) "/" file-name ".")]
-    (when-let [almost-result (seq
-                              (take 1
-                                    (filter identity
-                                            (map (fn [extension]
-                                                   (let [actual-name (str path extension)]
-                                                     (println "Searching for" actual-name)
-                                                     (io/resource actual-name)))
-                                                 extension-search-order))))]
-      (first almost-result))))
-
 (s/defn load-cljs-namespace :- (s/maybe s/Str)
   [module-name :- s/Str
    extension-search-order :- [s/Str]]
+  (raise {:obsolete "Really: don't do this here"})
   (when-let [url (find-namespace module-name extension-search-order)]
     ;; Note that there really isn't any reason to assume this is a file
     (slurp (io/file url))))
@@ -45,11 +29,11 @@ This belongs on the server
 ;;; Public
 
 (s/defn load-fn-ns :- (s/maybe s/Str)
-  [module-name :- s/Str]
-  (raise :not-implemented {"don't do this here"})
+  [
+   world-id
+   module-name :- s/Str]
   (load-cljs-namespace module-name ["cljs" "cljc" "js"]))
 
 (s/defn load-macros :- (s/maybe s/Str)
   [module-name :- s/Str]
-  (raise :not-implemented {"don't do this here"})
   (load-cljs-namespace module-name ["clj" "cljc"]))

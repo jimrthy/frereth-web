@@ -23,6 +23,11 @@
   "Doesn't really belong in here, but it'll do as a start"
   s/Any)
 
+(def library-spec
+  {:name s/Str
+   :macros s/Bool
+   :path s/Str})
+
 (def generic-world-description
   {:data {:type s/Keyword
           :version s/Any}
@@ -79,10 +84,11 @@ TODO: This really should happen in the client"
   [body]
   (sablono/html body))
 
-(defn bootstrap-loader
-  "How the initial bootstrapper can locate the namespace(s) it must have.
-TODO: Worlds really need a way to specify their own loader, once they've been bootstrapped."
-  [{:keys [name macros path] :as libspec}
+(defn loader
+  "Pull (probably pre-compiled) source from the server"
+  [send-fn
+   world-id
+   {:keys [name macros path] :as libspec}
    cb]
   (log/debug "Trying to load" name "at" path)
   (comment
@@ -101,13 +107,16 @@ TODO: Worlds really need a way to specify their own loader, once they've been bo
                     :cache cache
                     :source-map source-map}]
         (cb result))))
-  (let [request {:module-name name, :macro? macros :path path}]
-    ;; Really have to specify the destination server
-    (raise {:not-implemented "Write the rest of this"})))
+  (let [request {:module-name name, :macro? macros :path path :world world-id}]
+    (send-fn request)))
 
-(s/defn pre-process-script
-  [name
-   forms]
+(s/defn pre-process-script :- compiler-black-box
+  "Q: Isn't this really just 'process script'?
+We very well might get updated functions to run as the world changes"
+  [compiler-state :- compiler-black-box
+   loader (s/=> s/Any library-spec)
+   name :- s/Str
+   forms :- [[]]]
   (let [compiler-state (raise {:not-implemented "Pull from init'd world"})]
     (doseq [form forms]
       (cljs/eval compiler-state
@@ -134,6 +143,8 @@ Nothing better comes to mind at the moment."
   (let [data (:data descr)
         name (:name data)
         pre-processed (pre-process-body (select-keys data [:body :type :version]))
+        _ (raise {:not-implemented "Start here"})
+        ;; Parameters to this are wrong now
         compiler-state (pre-process-script name (:script data))
         styling (pre-process-styling (:css data))]
     (swap! global/app-state (fn [current]
