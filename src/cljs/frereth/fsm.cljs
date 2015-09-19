@@ -114,7 +114,7 @@ TODO: This really should happen in the client"
   "Q: Isn't this really just 'process script'?
 We very well might get updated functions to run as the world changes"
   [compiler-state :- compiler-black-box
-   loader (s/=> s/Any library-spec)
+   loader :- (s/=> s/Any library-spec)
    name :- s/Str
    forms :- [[]]]
   (let [compiler-state (raise {:not-implemented "Pull from init'd world"})]
@@ -194,33 +194,16 @@ Nothing better comes to mind at the moment."
 
 TODO: Desperately needs to be memoized
 
-This feels more than a little heavy-handed. Surely there are environments which
-won't need/want this full treatment.
+This feels more than a little silly, since it's just a wrapper
+around one function call.
+
+Until/unless I memoize it.
 "
   [outcome-chan]
   (log/debug "Initializing compiler")
   ;; Note that empty-state accepts an init function
   ;; Q: What's that for?
-  (cljs/empty-state)
-  (comment
-    ;; This can all go away, as soon as I have the "real" evaluator
-    ;; using a loader that points to the appropriate server
-    (let [st (cljs/empty-state)
-          _ raise {:obsolete "Do everything else from server"}
-          namespace-declaration ']
-      (cljs/eval st
-                 namespace-declaration
-                 {:eval cljs/js-eval
-                  :load bootstrap-loader}
-                 (fn [{:keys [error value]}]
-                   (if error
-                     (do
-                       (log/error error)
-                       ;; Take the sledge-hammer approach
-                       (async/close! outcome-chan))
-                     (do
-                       (log/info "Loaded successfully! (and there was much rejoicing)")
-                       (async/put! outcome-chan st))))))))
+  (cljs/empty-state))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

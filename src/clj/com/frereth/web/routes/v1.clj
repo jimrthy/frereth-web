@@ -3,12 +3,14 @@
   (:require [clojure.string :as string]  ; Really just for echo's reverse
             [com.frereth.client.communicator :as comms]
             [com.frereth.common.util :as util]
-            [com.frereth.web.loader :as loader]
             [plumbing.core :as plumbing :refer (defnk)]
             [schema.core :as s]
             [taoensso.timbre :as log]))
 
-;;;; TODO: Nothing except the routes actually belongs in here
+;;;; N.B.: Nothing except the routes actually belongs in here
+
+;; TODO: Add a standard handler for the basic boiler
+;; plate.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -35,32 +37,6 @@
     {:reversed (string/reverse s)}
     {:status 400
      :body {:problem "Missing submit parameter"}}))
-
-(defnk $library-source$:module-name$GET
-  "For loading basic cljs source code"
-  {:responses {200 s/Str
-               404 problem-explanation
-               410 problem-explanation}}
-  [[:request
-    [:uri-args module-name :- s/Str]
-    [:query-params macro :- s/Bool]]]
-  ;; TODO: Add a standard handler for the basic boiler
-  ;; plate.
-  (comment
-    (try
-      (if-let [source-code (if-not macro
-                             (loader/load-fn-ns module-name)
-                             (loader/load-macros module-name))]
-        {:status 200
-         :body source-code}
-        {:status 404
-         :body (str module-name "\nNot Found")})
-      (catch RuntimeException ex
-        (log/error ex "Unhandled exception trying to track down source code")
-        {:status 500
-         :body "Internal Failure"})))
-  {:status 410
-   :body "Go through sente instead"})
 
 (defnk $version$GET
   "This needs to from somewhere else automatically.

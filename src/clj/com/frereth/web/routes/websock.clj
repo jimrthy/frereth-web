@@ -87,13 +87,13 @@ sente at all."
    event-data :- s/Any]
   (let [msg (str "replying to: " id
                  "\n\tthis: "(keys this) ", a " (class this)
-                 "\n" #_(util/pretty this) "this is obnoxious"
                  "\n\tevent-key: " event-key
                  "\n\tevent-data: " event-data)]
     (log/debug msg))
   (try
     ;; One really obnoxious bit about the weirdness I'm running across here:
     ;; I'm not even using this
+    ;; Q: What weirdness?
     (let [actual (s/validate WebSockHandler this)]
       (let [response [event-key event-data]]
         (if ?reply-fn
@@ -152,8 +152,13 @@ sente at all."
 
 (s/defn request-ns-load!
   [this :- WebSockHandler
-   {:keys [module-name macro?] :as data}]
-  (raise {:not-implemented "Forward to server"}))
+   {:keys [module-name macro? path world] :as data}]
+  (let [con-man (-> this :frereth-server :connection-manager)]
+    (raise {:not-implemented "Request load data from server"})
+    (reply this
+           data
+           :frereth/loaded-ns
+           data-from-server)))
 
 (s/defn event-handler
   [this :- WebSockHandler
@@ -171,10 +176,12 @@ sente at all."
          ;; As it stands, this looks like a simple cond on the id
          ;; would make more sense.
          ;; Or possibly a multimethod that dispatches on id
+         ;; For that matter, I could just use a map of message id's to handler
+         ;; fn.
          ;; Q: Will I ever want different functionality based on the data?
          [:chsk/ws-ping _] (ping this ev-msg)
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
-         [:frereth/load-ns _] (request-ns-load! this ?data)
+         [:frereth/load-ns _] (request-ns-load! this ev-msg)
          [:frereth/pong _] (forward this ev-msg)
          [:frereth/response _] (log/info "Response from renderer:\n"
                                          (util/pretty ?data))
