@@ -168,9 +168,13 @@ sente at all."
                "\nID: " id
                "\nout of keys:\n" (keys ev-msg)))
   (match [id ?data]
+         ;; As it stands, this looks like a simple cond on the id
+         ;; would make more sense.
+         ;; Or possibly a multimethod that dispatches on id
+         ;; Q: Will I ever want different functionality based on the data?
          [:chsk/ws-ping _] (ping this ev-msg)
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
-         [:frereth/load-ns] (request-ns-load! this ?data)
+         [:frereth/load-ns _] (request-ns-load! this ?data)
          [:frereth/pong _] (forward this ev-msg)
          [:frereth/response _] (log/info "Response from renderer:\n"
                                          (util/pretty ?data))
