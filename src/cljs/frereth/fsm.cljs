@@ -143,9 +143,9 @@ Nothing better comes to mind at the moment."
   (let [data (:data descr)
         name (:name data)
         pre-processed (pre-process-body (select-keys data [:body :type :version]))
-        _ (raise {:not-implemented "Start here"})
-        ;; Parameters to this are wrong now
-        compiler-state (pre-process-script name (:script data))
+        _ (raise :start-herp)
+        ;; TODO: Need both compiler-state and loader
+        compiler-state (pre-process-script compiler-state loader name (:script data))
         styling (pre-process-styling (:css data))]
     (swap! global/app-state (fn [current]
                               ;; Add newly created world to the set we know about
@@ -199,7 +199,7 @@ around one function call.
 
 Until/unless I memoize it.
 "
-  [outcome-chan]
+  []
   (log/debug "Initializing compiler")
   ;; Note that empty-state accepts an init function
   ;; Q: What's that for?
@@ -214,9 +214,10 @@ Until/unless I memoize it.
 
 (s/defn initialize-world! :- s/Str
   "TODO: Really need a way to load multiple views of the same world instance"
-  []
+  [url :- global/world-id]
   {:world-id (uuid/make-random-uuid)
-   :compiler-state (initialize-compiler)})
+   :compiler-state (initialize-compiler)
+   :url url})
 
 (defn transition-to-world!
   [to-activate]

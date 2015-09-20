@@ -110,15 +110,15 @@ approach unified"
 
 (defn handle!
   [{:keys [send-fn event id ?data state] :as message-batch}]
-  (comment (log/debug "Incoming message-batch:\n"
-                      (keys message-batch)
-                      "\nEvent: " event
-                      "\nID: " id
-                      "\nData: " ?data
-                      "\nState: " state
-                      ;; This is pretty useless
-                      "\nMessage Batch is '" (dissoc message-batch :send-fn)
-                      "', a " (type message-batch)))
+  (comment) (log/debug "Incoming message-batch:\n"
+                       (keys message-batch)
+                       "\nEvent: " event
+                       "\nID: " id
+                       "\nData: " ?data
+                       "\nState: " state
+                       ;; This is pretty useless
+                       "\nMessage Batch is '" (dissoc message-batch :send-fn)
+                       "', a " (type message-batch))
 
   ;; This is a cheese-ball dispatching mechanism, but
   ;; anything more involved is YAGNI

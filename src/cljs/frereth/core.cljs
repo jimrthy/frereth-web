@@ -16,38 +16,42 @@ Right now, that isn't the case at all."
 (def five-seconds-in-ms (* 1000 5))
 (def five-minutes-in-ms (* 60 five-seconds-in-ms))
 
-(defn start-event-handler!
+(defn start-event-handler!  ; returns a map of the go block wrapping the event loop and an atom to tell it to stop
   [socket-description]
   (let [done (atom false)
-        recv (:recv-chan socket-description)]
-    (go
-      (loop []
-        (log/debug "Top of websocket event handling loop")
-        (let [event-pair
-              (async/alts! [(async/timeout five-minutes-in-ms) recv])
-              [incoming ch] event-pair]
-          (if (= recv ch)
-            (try
-              ;; Or maybe this is the start of a message batch?
-              ;; This is really a pair of async-receive-channel
-              ;; and send function
-              (if incoming
-                (dispatcher/handle! incoming)
+        recv (:recv-chan socket-description)
+        event-loop
+        (go
+          (loop []
+            (log/debug "Top of websocket event handling loop")
+            (let [[incoming ch]
+                  (async/alts! [(async/timeout five-minutes-in-ms) recv])]
+              (if (= recv ch)
+                (try
+                  ;; Or maybe this is the start of a message batch?
+                  ;; This is really a pair of async-receive-channel
+                  ;; and send function
+                  (if incoming
+                    (do
+                      (log/debug "Dispatching: " (pr-str incoming))
+                      (dispatcher/handle! incoming))
+                    (do
+                      (println "Channel closed. We're done here")
+                      (reset! done true)))
+                  (catch js/Object ex
+                    (log/error ex "Error escaped event handler")))
                 (do
-                  (println "Channel closed. We're done here")
-                  (reset! done true)))
-              (catch js/Object ex
-                (log/error ex "Error escaped event handler")))
-            (do
-              (log/debug "Background Async WS Loop: Heartbeat"))))
-        (when-not @done
-          (recur)))
-      ;; TODO: Really need to associate some sort of name/ID with
-      ;; each socket. It's confusing when figwheel reloads and a
-      ;; new one gets established.
-      ;; Honestly, that shouldn't happen.
-      ;; But I have other things that seem higher priority to worry about.
-      (log/warn "Event Handler for [ultimate ch-sock] exited"))))
+                  (log/debug "Background Async WS Loop: Heartbeat"))))
+            (when-not @done
+              (recur)))
+          ;; TODO: Really need to associate some sort of name/ID with
+          ;; each socket. It's confusing when figwheel reloads and a
+          ;; new one gets established.
+          ;; Honestly, that shouldn't happen.
+          ;; But I have other things that seem higher priority to worry about.
+          (log/warn "Event Handler for [ultimate ch-sock] exited"))]
+    {:event-loop event-loop
+     :done done}))
 
 (defn client-sock
   []
@@ -140,8 +144,10 @@ initializing the connection:
       ;; This should pause, waiting for the result of
       ;; channel-creation-loop, then swap the global/app-state's
       ;; :channel-socket with whatever it returns
-      (let [channel-creation-result (<! pending-server-handshake)]
+      (let [event-loop (:event-loop pending-server-handshake)
+            channel-creation-result (<! event-loop)]
         (log/debug "Server fresh connection request returned:\n"
+                   ;; This is an asynch channel now. Q: How?
                    (pr-str channel-creation-result))))
     (log/info "Connected to outside world")))
 ;; Because I'm not sure how to trigger this on a page reload

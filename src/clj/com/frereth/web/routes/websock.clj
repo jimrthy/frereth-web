@@ -10,7 +10,7 @@ sente at all."
             [com.frereth.common.util :as util]
             [com.frereth.web.routes.ring :as fr-ring]
             [com.stuartsierra.component :as component]
-            [ribol.core :refer (raise)]
+            [ribol.core :refer (manage on raise)]
             [schema.core :as s]
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.immutant :refer (sente-web-server-adapter)]
@@ -153,12 +153,34 @@ sente at all."
 (s/defn request-ns-load!
   [this :- WebSockHandler
    {:keys [module-name macro? path world] :as data}]
-  (let [con-man (-> this :frereth-server :connection-manager)]
-    (raise {:not-implemented "Request load data from server"})
-    (reply this
-           data
-           :frereth/loaded-ns
-           data-from-server)))
+  ;; Q: Does it make sense to spawn the thread here? Or in the caller?
+  ;; A: It depends on whether these handlers should always run in their
+  ;; own thread, of course.
+  ;; For that matter, it might make the most sense to just pass a
+  ;; parameter to rpc to decide whether to spawn a new thread or not
+  (async/thread
+    (let [mgr (-> this :frereth-server :connection-manager)
+          response
+              (manage
+           (con-man/rpc-sync world
+                        :frereth/load-ns
+                        (select-keys [module-name macro? path]))
+           ;; For now, just insert handlers directly into the code
+           ;; to be compiled
+           ;; TODO: Come up w/ a better strategy
+           ;; If nothing else, this sort of thing seems like it would be
+           ;; more appropriate in the client.
+           ;; Except that, as far as the client is concerned, there's
+           ;; no real hint about what we're doing.
+           ;; So maybe this should be a wrapper in there around rpc
+           ;; Get it working first, then worry about getting it to work
+           ;; correctly.
+           (on :timeout []
+               {:script '(raise :timeout)}))]
+      (reply this
+             data
+             :frereth/loaded-ns
+             response))))
 
 (s/defn event-handler
   [this :- WebSockHandler

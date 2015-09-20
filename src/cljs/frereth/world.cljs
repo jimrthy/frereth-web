@@ -1,7 +1,6 @@
 (ns frereth.world
   "Big-picture world-rendering stuff"
-  (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
-                   [schema.macros :as sm]
+  (:require-macros [schema.macros :as sm]
                    [schema.core :as s])
   (:require [frereth.globals :as global]
             [frereth.repl :as repl]
