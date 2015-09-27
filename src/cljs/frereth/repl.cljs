@@ -52,14 +52,19 @@
    om/IRender
    (render
     [_]
-    (println "Printing eval result(s): " output " a " (type output))
-    (let [table-style #js {:border "1px solid green"}]
-      (dom/tr nil
-              ;; Q: How do I make this scrollable?
-              (dom/td #js {:style table-style}
-                      (apply dom/ul nil
-                             (map stripe
-                                  output (cycle ["#ff0" "#fff"])))))))
+    (if output
+      (do
+        (log/debug "Printing eval result(s): " output " a " (type output))
+        (let [table-style #js {:border "1px solid green"}]
+          (dom/tr nil
+                  ;; Q: How do I make this scrollable?
+                  (dom/td #js {:style table-style}
+                          (apply dom/ul nil
+                                 (map stripe
+                                      output (cycle ["#ff0" "#fff"])))))))
+      (do
+        (log/warn "REPL render: nowhere to print results")
+        (dom/tr nil (dom/td #js {:border "1px solid red"} "Huh?")))))
    om/IWillUnmount
    (will-unmount
     [_]
@@ -77,33 +82,45 @@
     om/IRenderState
     (render-state
      [this {:keys [input namespace]}]
-     (dom/div nil
-      (dom/input #js {:placeholder (str namespace " =>")
-                      :type "text"
-                      :ref "to-read"}
-                 nil)
-      (dom/br nil nil)
-      ;; TODO: Inline click handlers are *so* jquery
-      (dom/input #js {:type "button"
-                      :onClick (fn [e]
-                                 (let [elm (om/get-node owner "to-read")
-                                       forms (.-value elm)
-                                       evaluator (om/get-state owner :evaluator)]
-                                   (println "I've been clicked! Sending\n"
-                                            forms "\nto\n" evaluator
-                                            "which is" (if evaluator "" " not") "truthy")
-                                   ;; I'm getting a warning about returning false from an event handler.
-                                   ;; Q: Why?
-                                   (if forms
-                                     (put! evaluator forms)
-                                     true)))
-                      :value "Eval!"}
-                 nil)
-      (dom/input #js {:type "button"
-                      :onClick (fn [e]
-                                 (let [send-fn (-> global/app-state deref :channel-socket :send!)]
-                                   (dispatcher/send-blank-slate! send-fn)))
-                      :value "Reconnect"})))))
+     ;; Relying on global state here violates the fundamental contract
+     ;; upon which Om is built.
+     ;; More importantly, we should already have this available
+     ;; At a higher level in the call stack
+     ;; This was a crude hack to begin with
+     ;; TODO: Move it somewhere more sensible
+     ;; Q: Where?
+     ;; Well, this interface needs serious rework from the ground up.
+     ;; It really should be something like a collection of tabbed windows.
+     (let [world-id (-> global/app-state deref :active-world)
+           world-url "where"]
+       (dom/div nil
+                (dom/input #js {:placeholder (str namespace " =>")
+                                :type "text"
+                                :ref "to-read"}
+                           nil)
+                (dom/br nil nil)
+                ;; TODO: Inline click handlers are *so* jquery
+                (dom/input #js {:type "button"
+                                :onClick (fn [e]
+                                           (let [elm (om/get-node owner "to-read")
+                                                 forms (.-value elm)
+                                                 evaluator (om/get-state owner :evaluator)]
+                                             (println "I've been clicked! Sending\n"
+                                                      forms "\nto\n" evaluator
+                                                      "which is" (if evaluator "" " not") "truthy")
+                                             ;; I'm getting a warning about returning false from an event handler.
+                                             ;; Q: Why?
+                                             (if forms
+                                               (put! evaluator forms)
+                                               true)))
+                                :value "Eval!"}
+                           nil)
+                (dom/input #js {:type "button"
+                                :onClick (fn [e]
+                                           (let [send-fn (-> global/app-state deref :channel-socket :send!)]
+                                             (raise "Start here")
+                                             (dispatcher/send-blank-slate! send-fn world-id world-url)))
+                                :value "Reconnect"}))))))
 
 (defn evaluate
   [cursor forms]

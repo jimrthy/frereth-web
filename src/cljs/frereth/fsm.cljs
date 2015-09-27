@@ -143,8 +143,6 @@ Nothing better comes to mind at the moment."
   (let [data (:data descr)
         name (:name data)
         pre-processed (pre-process-body (select-keys data [:body :type :version]))
-        _ (raise :start-herp)
-        ;; TODO: Need both compiler-state and loader
         compiler-state (pre-process-script compiler-state loader name (:script data))
         styling (pre-process-styling (:css data))]
     (swap! global/app-state (fn [current]

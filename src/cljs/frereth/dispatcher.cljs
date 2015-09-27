@@ -112,13 +112,14 @@ approach unified"
   [{:keys [send-fn event id ?data state] :as message-batch}]
   (comment) (log/debug "Incoming message-batch:\n"
                        (keys message-batch)
+                       ;; It seems as though logging state here would be
+                       ;; extremely helpful.
+                       ;; It isn't.
+                       ;; And, honestly, it's a black box that I probably
+                       ;; shouldn't ever know anything about.
                        "\nEvent: " event
                        "\nID: " id
-                       "\nData: " ?data
-                       "\nState: " state
-                       ;; This is pretty useless
-                       "\nMessage Batch is '" (dissoc message-batch :send-fn)
-                       "', a " (type message-batch))
+                       "\nData: " ?data)
 
   ;; This is a cheese-ball dispatching mechanism, but
   ;; anything more involved is YAGNI
