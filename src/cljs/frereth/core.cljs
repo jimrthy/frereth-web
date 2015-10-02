@@ -30,7 +30,7 @@ Right now, that isn't the case at all."
              (log/debug "Top of websocket event handling loop #:" event-loop-number)
              (let [[incoming ch]
                    (async/alts! [(async/timeout five-minutes-in-ms) recv-chan])]
-               (log/debug "event-loop" event-loop-number " received:\n" (pr-str (keys incoming)))
+               (log/debug "event-loop" event-loop-number " received keys:\n" (pr-str (keys incoming)))
                (if (= recv-chan ch)
                  (try
                    ;; Or maybe this is the start of a message batch?
@@ -46,6 +46,7 @@ Right now, that isn't the case at all."
                    (catch js/Object ex
                      (log/error ex (str "Error escaped event handler #" event-loop-number))))
                  (do
+                   (assert (nil? incoming))
                    (log/debug "Background Async WS Loop: Heartbeat on event loop #" event-loop-number))))
              (when-not @done
                (recur)))
@@ -147,7 +148,6 @@ Right now, that isn't the case at all."
       ;; :channel-socket with whatever it returns
       (let [channel-creation-result (<! pending-server-handshake)]
         (log/debug "Server fresh connection request returned:\n"
-                   ;; This is an asynch channel now. Q: How?
                    (pr-str channel-creation-result))))
     (log/info "-main: Connected to outside world")))
 ;; Because I'm not sure how to trigger this on a page reload

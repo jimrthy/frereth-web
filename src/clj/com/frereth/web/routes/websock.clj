@@ -126,6 +126,7 @@ sente at all."
 (s/defn initiate-auth!
   [this :- WebSockHandler
    ev-msg]
+  (log/debug "Initial connection to AUTH on server")
   (async/thread
     (let [cpt (-> this :frereth-server :connection-manager)]
       (if-let [responder (con-man/initiate-handshake cpt 5 2000)]
@@ -182,6 +183,15 @@ sente at all."
              :frereth/loaded-ns
              response))))
 
+(s/defn initialize-connection!
+  [this :- WebSockHandler
+   {:keys [id ?data event]}]
+  ;; Q: Is there anything useful I can do here?
+  ;; A: Well, could start priming client connection to make sure
+  ;; its initial Auth piece is ready to go.
+  ;; Since that's coming next.
+  (log/info "Browser connected"))
+
 (s/defn event-handler
   [this :- WebSockHandler
    {:keys [id ?data event] :as ev-msg}]
@@ -201,6 +211,7 @@ sente at all."
          ;; For that matter, I could just use a map of message id's to handler
          ;; fn.
          ;; Q: Will I ever want different functionality based on the data?
+         [:chsk/uidport-open _] (initialize-connection! this ev-msg)
          [:chsk/ws-ping _] (ping this ev-msg)
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
          [:frereth/load-ns _] (request-ns-load! this ev-msg)
@@ -253,10 +264,10 @@ the event loop"
            event-loop
            (async/go
              (loop []
-               (log/debug "Top of websocket event loop\n" (util/pretty {:stopper stopper
-                                                                        :receiver rcvr
-                                                                        :ws-controller ws-controller
-                                                                        :web-sock-handler ((complement nil?) web-sock-handler)}))
+               (log/debug "Top of websocket event loop"  #_(util/pretty {:stopper stopper
+                                                                         :receiver rcvr
+                                                                         :ws-controller ws-controller
+                                                                         :web-sock-handler ((complement nil?) web-sock-handler)}))
                ;; TODO: I'm pretty sure I have 5 minutes defined somewhere useful
                (let [t-o (async/timeout (* 1000 60 5))
                      [v ch] (async/alts! [t-o stopper rcvr ws-controller])]

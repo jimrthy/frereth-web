@@ -117,9 +117,11 @@
                            nil)
                 (dom/input #js {:type "button"
                                 :onClick (fn [e]
-                                           (let [send-fn (-> global/app-state deref :channel-socket :send!)]
-                                             (raise "Start here")
-                                             (dispatcher/send-blank-slate! send-fn world-id world-url)))
+                                           (if world-id
+                                             (if-let [send-fn (-> global/app-state deref :channel-socket :send!)]
+                                               (dispatcher/send-blank-slate! send-fn world-id world-url)
+                                               (js/alert "Missing send!"))
+                                             (js/alert "No currently active world: don't know where to try to re-connect")))
                                 :value "Reconnect"}))))))
 
 (defn evaluate

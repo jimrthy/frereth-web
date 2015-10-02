@@ -4,6 +4,7 @@
             [cljs.js :as cljs]
             [cljs-uuid-utils.core :as uuid]
             [frereth.globals :as global]
+            [frereth.world :as world]
             [om.core :as om]
             [ribol.cljs :refer [create-issue
                                 *managers*
@@ -18,10 +19,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
-
-(def compiler-black-box
-  "Doesn't really belong in here, but it'll do as a start"
-  s/Any)
 
 (def library-spec
   {:name s/Str
@@ -110,10 +107,10 @@ TODO: This really should happen in the client"
   (let [request {:module-name name, :macro? macros :path path :world world-id}]
     (send-fn request)))
 
-(s/defn pre-process-script :- compiler-black-box
+(s/defn pre-process-script :- world/compiler-black-box
   "Q: Isn't this really just 'process script'?
 We very well might get updated functions to run as the world changes"
-  [compiler-state :- compiler-black-box
+  [compiler-state :- world/compiler-black-box
    loader :- (s/=> s/Any library-spec)
    name :- s/Str
    forms :- [[]]]
@@ -139,7 +136,8 @@ We very well might get updated functions to run as the world changes"
   "This isn't named particularly well.
 
 Nothing better comes to mind at the moment."
-  [descr :- renderable-world-description]
+  [descr :- renderable-world-description
+   compiler-state :- world/compiler-black-box]
   (let [data (:data descr)
         name (:name data)
         pre-processed (pre-process-body (select-keys data [:body :type :version]))
@@ -210,10 +208,10 @@ Until/unless I memoize it.
 ;;; When we have a description, call start-world! on it
 ;;; Use transition-to-world! to make a given world active
 
-(s/defn initialize-world! :- s/Str
+(s/defn initialize-world! :- world/template
   "TODO: Really need a way to load multiple views of the same world instance"
   [url :- global/world-id]
-  {:world-id (uuid/make-random-uuid)
+  {:id (uuid/make-random-uuid)
    :compiler-state (initialize-compiler)
    :url url})
 
@@ -224,6 +222,8 @@ Until/unless I memoize it.
                             (if-let [_ (-> current :worlds (get to-activate))]
                               (assoc current :active-world to-activate)
                               (raise {:unknown-world to-activate})))))
+
+(defonce most-recent-world-description (atom nil))
 
 (s/defn start-world!
   "Let's get this party started!
@@ -270,10 +270,13 @@ Initializing '"
 
      (when (= description :hold-please)
        (raise {:obsolete "Why don't I have the handshake toggle fixed?"}))
-     (make-renderable! description)
-     ;; It's very tempting to call transition-to-world! as the next step
-     ;; But, really, that's up to the caller
-     (when transition
-       (transition-to-world! request-id))))
+     (reset! most-recent-world-description description)
+     (let [compiler-state "TODO: pull this from...where?"]
+       (js/alert "New world to make renderable")
+       (make-renderable! description compiler-state)
+       ;; It's very tempting to call transition-to-world! as the next step
+       ;; But, really, that's up to the caller
+       (when transition
+         (transition-to-world! request-id)))))
   ([data]
    (start-world! data false)))

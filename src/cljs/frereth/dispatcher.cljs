@@ -4,6 +4,7 @@
   (:require [cljs.core.async :as async]
             [frereth.fsm :as fsm]
             [frereth.globals :as global]
+            [frereth.world :as world]
             [ribol.cljs :refer [create-issue
                                 *managers*
                                 *optmap*
@@ -72,8 +73,9 @@ approach unified"
 (s/defn send-blank-slate!
   "Have client notify a server that we want to learn about its world(s)"
   [send-fn
-   world-id :- s/Str
+   world-id :- world/template
    world-url :- global/world-url]
+  (js/alert "Sending blank-slate request for " world-id "at" world-url)
   (send-standard-event send-fn :frereth/blank-slate {:url world-url
                                                      :request-id world-id}))
 
@@ -99,9 +101,12 @@ approach unified"
                      :port 7848
                      :path "get-login"}
           response-chan (fsm/initialize-world! localhost)]
+      (log/debug "Requesting a fresh world connection")
       (go
-        (if-let [world-id (async/<! response-chan)]
-          (send-blank-slate! send-fn world-id localhost)
+        (if-let [world-template (async/<! response-chan)]
+          (do
+            (log/info (str "Initialized empty, unknown world: " (:world-id world-template)))
+            (send-blank-slate! send-fn world-template localhost))
           (log/error "Failed to initialize a new world at\n"
                      (pr-str localhost)))))))
 
@@ -125,6 +130,9 @@ approach unified"
   ;; anything more involved is YAGNI
   (condp = id
     :chsk/handshake (do (log/info "Initial Channel Socket Handshake received")
+                        ;; Note that this is a go block. We don't care about
+                        ;; its return value, but silently discarding it seems
+                        ;; like a bad idea
                         (connect-to-initial-world! send-fn))
     :chsk/recv (real-dispatcher ?data)
     :chsk/state (log/info "ChannelSock State message received:\n"
