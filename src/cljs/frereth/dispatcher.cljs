@@ -106,6 +106,7 @@ approach unified"
         (if-let [world-template (async/<! response-chan)]
           (do
             (log/info (str "Initialized empty, unknown world: " (:world-id world-template)))
+            (global/add-world! world-template )
             (send-blank-slate! send-fn world-template localhost))
           (log/error "Failed to initialize a new world at\n"
                      (pr-str localhost)))))))

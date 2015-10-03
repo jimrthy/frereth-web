@@ -2,8 +2,9 @@
   "Big-picture world-rendering stuff"
   (:require-macros [schema.macros :as sm]
                    [schema.core :as s])
-  (:require [frereth.globals :as global]
-            [frereth.repl :as repl]
+  ;; Heving this tied into rendering seems like a mistake, at best.
+  (:require [frereth.repl :as repl]
+            [frereth.schema :as fr-skm]
             [frereth.three :as three]
             [om.core :as om]
             [om.dom :as dom]
@@ -12,16 +13,6 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
-
-(def compiler-black-box
-  "Doesn't really belong in here, but it'll do as a start"
-  s/Any)
-
-(def template
-  "What does the highest possible view of a World look like?"
-  {:id s/Str
-   :compiler-state compiler-black-box
-   :url global/world-id})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -97,8 +88,8 @@
 ;;; Public
 
 (defn start
-  []
+  [app-state]
   (om/root
    world-wrapper
-   global/app-state
+   app-state
    {:target (. js/document (getElementById "everything"))}))

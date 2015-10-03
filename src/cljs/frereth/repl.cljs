@@ -5,9 +5,6 @@
                    [schema.core :as s])
   (:require [cljs.js :as cljs]
             [cljs.core.async :refer [put! <!] :as async]
-            ;; TODO: Really shouldn't be referencing this here
-            ;; It's strictly because my hand-shaking is buggy
-            [frereth.dispatcher :as dispatcher]
             [frereth.globals :as global]
             [om.core :as om]
             [om.dom :as dom]
@@ -119,7 +116,12 @@
                                 :onClick (fn [e]
                                            (if world-id
                                              (if-let [send-fn (-> global/app-state deref :channel-socket :send!)]
-                                               (dispatcher/send-blank-slate! send-fn world-id world-url)
+                                               (do
+                                                 ;; Really need to break down and implement an event loop
+                                                 ;; Or something along those lines.
+                                                 ;; Whichever: this led to circular imports
+                                                 (comment (dispatcher/send-blank-slate! send-fn world-id world-url))
+                                                 (js/alert "Reconnecting broken"))
                                                (js/alert "Missing send!"))
                                              (js/alert "No currently active world: don't know where to try to re-connect")))
                                 :value "Reconnect"}))))))

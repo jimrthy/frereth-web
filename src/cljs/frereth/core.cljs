@@ -125,7 +125,7 @@ Right now, that isn't the case at all."
 (defn -main
   []
   (log/debug "Starting initial World")
-  (world/start)
+  (world/start global/app-state)
   (comment
     ;; Can't do this before we've created the canvas for
     ;; drawing everything.

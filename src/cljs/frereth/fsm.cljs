@@ -4,6 +4,7 @@
             [cljs.js :as cljs]
             [cljs-uuid-utils.core :as uuid]
             [frereth.globals :as global]
+            [frereth.schema :as fr-skm]
             [frereth.world :as world]
             [om.core :as om]
             [ribol.cljs :refer [create-issue
@@ -28,13 +29,13 @@
 (def generic-world-description
   {:data {:type s/Keyword
           :version s/Any}
-   :name global/world-id
+   :name fr-skm/world-id
    s/Keyword s/Any
    s/Str s/Any})
 
 (def renderable-world-description
   {:renderer (s/=> s/Any)
-   :name global/world-id})
+   :name fr-skm/world-id})
 
 (defmulti pre-process-body
   "Convert the supplied world description into something generically useful/usable
@@ -210,7 +211,7 @@ Until/unless I memoize it.
 
 (s/defn initialize-world! :- world/template
   "TODO: Really need a way to load multiple views of the same world instance"
-  [url :- global/world-id]
+  [url :- fr-skm/world-id]
   {:id (uuid/make-random-uuid)
    :compiler-state (initialize-compiler)
    :url url})
@@ -218,7 +219,7 @@ Until/unless I memoize it.
 (defn transition-to-world!
   [to-activate]
   (log/debug "Trying to activate world: '" (pr-str to-activate) "'")
-  (swap! global/app-state (fn [current]
+  (swap! fr-skm/app-state (fn [current]
                             (if-let [_ (-> current :worlds (get to-activate))]
                               (assoc current :active-world to-activate)
                               (raise {:unknown-world to-activate})))))
