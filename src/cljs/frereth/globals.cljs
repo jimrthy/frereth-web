@@ -4,7 +4,8 @@
                                   *managers*
                                   *optmap*
                                   raise-loop]]
-              [schema.core :as s :include-macros true])
+              [schema.core :as s :include-macros true]
+              [taoensso.timbre :as log])
     ;; Q: Could I simplify this by just using :include-macros above?
     (:require-macros [ribol.cljs :refer [raise]]))
 
@@ -61,12 +62,20 @@ app-state atom"
   []
   (-> app-state deref :active-world))
 
+(s/defn set-active-world!
+  [world-id :- fr-skm/world-id]
+  (log/debug "Trying to activate world: '" (pr-str world-id) "'")
+  (swap! app-state (fn [current]
+                     (if-let [_ (-> current :worlds (get world-id))]
+                       (assoc current :active-world world-id)
+                       (raise {:unknown-world world-id})))))
+
 (defn get-active-world-state
   []
   (get-world-state (get-active-world)))
 
 (s/defn add-world!
-  ([{:keys [compiler-state url] :as template} :- world/template
+  ([{:keys [compiler-state url] :as template} :- fr-skm/world-template
      state :- s/Any]
    (let [world-id (:id template)]
      (swap! app-state
@@ -83,5 +92,5 @@ app-state atom"
                                     :input "=>"
                                     :state compiler-state}}]
                   (update-in existing [:worlds world-id] (constantly fresh))))))))
-  ([template :- world/template]
+  ([template :- fr-skm/world-template]
    (add-world! template :initializing)))

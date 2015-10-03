@@ -138,7 +138,7 @@ sente at all."
               (reply this ev-msg :frereth/response {:status 200 :body "Handshake Completed"})
               (let [{:keys [uid client-id]} ev-msg
                     id (or client-id uid)]
-                (post (:send-fn ev-msg) id :frereth/initialize-world v)))
+                (post (:send-fn ev-msg) id :frereth/start-world v)))
             (let [msg (if (= c response-chan)
                         "Handshaker closed response channel. This is bad."
                         "Timed out waiting for response. This isn't great")]
@@ -212,6 +212,8 @@ sente at all."
          ;; fn.
          ;; Q: Will I ever want different functionality based on the data?
          [:chsk/uidport-open _] (initialize-connection! this ev-msg)
+         ;; TODO: This seems like a pretty important detail
+         [:chsk/uidport-close _] (log/error "Remote port closed: need to clean up its resources")
          [:chsk/ws-ping _] (ping this ev-msg)
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
          [:frereth/load-ns _] (request-ns-load! this ev-msg)

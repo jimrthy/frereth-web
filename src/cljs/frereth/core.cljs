@@ -30,7 +30,9 @@ Right now, that isn't the case at all."
              (log/debug "Top of websocket event handling loop #:" event-loop-number)
              (let [[incoming ch]
                    (async/alts! [(async/timeout five-minutes-in-ms) recv-chan])]
-               (log/debug "event-loop" event-loop-number " received keys:\n" (pr-str (keys incoming)))
+               (if-let [event-keys (keys incoming)]
+                 (log/debug "event-loop" event-loop-number "received keys:\n" (pr-str event-keys))
+                 (log/debug "event-loop" event-loop-number "received:\n" (pr-str incoming)))
                (if (= recv-chan ch)
                  (try
                    ;; Or maybe this is the start of a message batch?

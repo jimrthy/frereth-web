@@ -24,6 +24,6 @@ TODO: Honestly, these pieces probably belong in frereth.common in a .cljc"
 
 (def world-template
   "What does the highest possible view of a World look like?"
-  {:id world-id
+  {:id world-id  ; TODO: Refactor/rename this to something like :uid, so I can use destructuring w/ it
    :compiler-state compiler-black-box
    :url world-url})

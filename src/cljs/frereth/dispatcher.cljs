@@ -4,6 +4,7 @@
   (:require [cljs.core.async :as async]
             [frereth.fsm :as fsm]
             [frereth.globals :as global]
+            [frereth.schema :as fr-skm]
             [frereth.world :as world]
             [ribol.cljs :refer [create-issue
                                 *managers*
@@ -63,6 +64,7 @@ approach unified"
     (log/debug ":chsk/recv around a " event-type
                "\nMessage Body:\n" body)
     (condp = event-type
+    ;; Letting the server just take control here would be a horrible idea
       :frereth/start-world (fsm/start-world! body true)
       ;; I'm getting this and don't know why.
       ;; TODO: Track it down
@@ -73,11 +75,10 @@ approach unified"
 (s/defn send-blank-slate!
   "Have client notify a server that we want to learn about its world(s)"
   [send-fn
-   world-id :- world/template
-   world-url :- global/world-url]
-  (js/alert "Sending blank-slate request for " world-id "at" world-url)
-  (send-standard-event send-fn :frereth/blank-slate {:url world-url
-                                                     :request-id world-id}))
+   world-description :- fr-skm/world-template]
+  (js/alert "Sending blank-slate request for '" (pr-str world-description) "'")
+  (send-standard-event send-fn :frereth/blank-slate {:url (:url world-description)
+                                                     :request-id (:id world-description)}))
 
 (defn connect-to-initial-world!
   [send-fn]
@@ -93,23 +94,18 @@ approach unified"
       ;; Although there are probably plenty of worlds that couldn't care less about
       ;; the connection.
       ;; Like, say, one for playing solitaire.
-      (raise {:not-implemented "Really need to switch back to initial world and indicate dropped connection"})
+      #_(raise {:not-implemented "Really need to switch back to initial world and indicate dropped connection"})
+      (throw (ex-info "Really need to switch back to initial world and indicate dropped connection" {:not-implemented "TODO"}))
       (global/swap-world-state! active-world (constantly :re-connecting)))
     ;; Set up the "real" initial world
     (let [localhost {:protocol :tcp
                      :address "127.0.0.1"
                      :port 7848
                      :path "get-login"}
-          response-chan (fsm/initialize-world! localhost)]
-      (log/debug "Requesting a fresh world connection")
-      (go
-        (if-let [world-template (async/<! response-chan)]
-          (do
-            (log/info (str "Initialized empty, unknown world: " (:world-id world-template)))
-            (global/add-world! world-template )
-            (send-blank-slate! send-fn world-template localhost))
-          (log/error "Failed to initialize a new world at\n"
-                     (pr-str localhost)))))))
+          empty-world (fsm/initialize-world! localhost)]
+      (log/info (str "Initialized empty, unknown world: " (:world-id empty-world)))
+      (global/add-world! empty-world)
+      (send-blank-slate! send-fn empty-world))))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -128,7 +124,7 @@ approach unified"
                        "\nData: " ?data)
 
   ;; This is a cheese-ball dispatching mechanism, but
-  ;; anything more involved is YAGNI
+  ;; anything more involved is YAGNI...for now
   (condp = id
     :chsk/handshake (do (log/info "Initial Channel Socket Handshake received")
                         ;; Note that this is a go block. We don't care about
@@ -138,11 +134,6 @@ approach unified"
     :chsk/recv (real-dispatcher ?data)
     :chsk/state (log/info "ChannelSock State message received:\n"
                           ?data)
-    ;; Letting the server just take control here would be a horrible idea
-    :frereth/initialize-world (do
-                                (log/info "Switching to new world")
-                                (raise {:obsolete "This really comes in as a :chsk/recv message"})
-                                (fsm/transition-to-world! ?data))
     :frereth/response (do
                         (log/debug "Request response received:\n"
                                    "I should try to do something intelligent with this,\n"

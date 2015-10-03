@@ -108,10 +108,10 @@ TODO: This really should happen in the client"
   (let [request {:module-name name, :macro? macros :path path :world world-id}]
     (send-fn request)))
 
-(s/defn pre-process-script :- world/compiler-black-box
+(s/defn pre-process-script :- fr-skm/compiler-black-box
   "Q: Isn't this really just 'process script'?
 We very well might get updated functions to run as the world changes"
-  [compiler-state :- world/compiler-black-box
+  [compiler-state :- fr-skm/compiler-black-box
    loader :- (s/=> s/Any library-spec)
    name :- s/Str
    forms :- [[]]]
@@ -138,7 +138,7 @@ We very well might get updated functions to run as the world changes"
 
 Nothing better comes to mind at the moment."
   [descr :- renderable-world-description
-   compiler-state :- world/compiler-black-box]
+   compiler-state :- fr-skm/compiler-black-box]
   (let [data (:data descr)
         name (:name data)
         pre-processed (pre-process-body (select-keys data [:body :type :version]))
@@ -207,9 +207,9 @@ Until/unless I memoize it.
 ;;;
 ;;; N.B. Start w/ initialize-world! as a blank default
 ;;; When we have a description, call start-world! on it
-;;; Use transition-to-world! to make a given world active
+;;; Use global/set-active-world! to make a given world active
 
-(s/defn initialize-world! :- world/template
+(s/defn initialize-world! :- fr-skm/world-template
   "TODO: Really need a way to load multiple views of the same world instance"
   [url :- fr-skm/world-id]
   {:id (uuid/make-random-uuid)
@@ -218,13 +218,11 @@ Until/unless I memoize it.
 
 (defn transition-to-world!
   [to-activate]
-  (log/debug "Trying to activate world: '" (pr-str to-activate) "'")
-  (swap! fr-skm/app-state (fn [current]
-                            (if-let [_ (-> current :worlds (get to-activate))]
-                              (assoc current :active-world to-activate)
-                              (raise {:unknown-world to-activate})))))
+  (raise {:obsolete "Just call global/set-active-world! instead"}))
 
-(defonce most-recent-world-description (atom nil))
+;; To aid in debugging. What did the server send me last?
+(defonce most-recent-world-description
+  (atom nil))
 
 (s/defn start-world!
   "Let's get this party started!
@@ -233,7 +231,7 @@ Server has returned bootstrap info.
 
 This is really just the way the world bootstraps.
 
-It seems like this conflicts w/ transition-world!, but it really doesn't.
+It seems like this conflicts w/ global/set-active-world!, but it really doesn't.
 
 It needs to send us enough initial info to start loading the full thing.
 
@@ -250,20 +248,25 @@ out?"
   ([{:keys [data]
      :as description}
     transition :- s/Bool]
+   ;; Just to make it easier to track what I'm seeing during debugging
+   (reset! most-recent-world-description description)
+
    (let [{:keys [action-url
                  expires
                  request-id
                  session-token
                  world]
           :as destination} data]
-     (raise {:not-implemented "Already have world initialized"})
      (log/info "=========================================
 This is important!!!!!
 Initializing '"
+               ;; using :name screws up destructuring because of the conflict
+               ;; w/ the built-in
+               ;; TODO: Come up with something better
                (pr-str (:name data))
                "' World:
 =========================================\n"
-               destination)
+               (pr-str destination))
      (try
        (log/debug "Keys in new world body: " (keys destination))
        (catch js/Error ex
@@ -271,13 +274,13 @@ Initializing '"
 
      (when (= description :hold-please)
        (raise {:obsolete "Why don't I have the handshake toggle fixed?"}))
-     (reset! most-recent-world-description description)
+
      (let [compiler-state "TODO: pull this from...where?"]
        (js/alert "New world to make renderable")
        (make-renderable! description compiler-state)
-       ;; It's very tempting to call transition-to-world! as the next step
+       ;; It's very tempting to call set-active-world! as the next step
        ;; But, really, that's up to the caller
        (when transition
-         (transition-to-world! request-id)))))
+         (global/set-active-world! request-id)))))
   ([data]
    (start-world! data false)))
