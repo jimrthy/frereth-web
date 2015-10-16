@@ -36,6 +36,8 @@ sente at all."
 
 (declare make-channel-socket reset-web-socket-handler!)
 (s/defrecord WebSockHandler [ch-sock :- (s/maybe channel-socket)
+                             ;; In a lot of ways, this needs to be a map
+                             ;; for handling multiple connections
                              frereth-server
                              ws-controller :- (s/maybe fr-skm/async-channel)
                              ws-stopper :- (s/maybe (s/=> s/Any))]
@@ -126,10 +128,12 @@ sente at all."
 (s/defn initiate-auth!
   [this :- WebSockHandler
    ev-msg]
-  (log/debug "Initial connection to AUTH on server")
+  (comment (log/debug "Initiating AUTH on server based on:\n" (keys ev-msg)
+                      "\nEvent: " (:event ev-msg)
+                      "\nData: " (:?data ev-msg)))
   (async/thread
     (let [cpt (-> this :frereth-server :connection-manager)]
-      (if-let [responder (con-man/initiate-handshake cpt 5 2000)]
+      (if-let [responder (con-man/initiate-handshake cpt (:?data ev-msg) 5 2000)]
         (let [response-chan (:respond responder)
               [v c] (async/alts!! [response-chan (async/timeout 1000)])]
           (if v
@@ -279,7 +283,7 @@ the event loop"
                        (when-not (= event :chsk/ws-ping)
                          ;; Handle it, but don't log about it: this happens far too often
                          ;; to spam the logs with the basic fact
-                         (log/debug "Message to handle:\n" (util/pretty v))))
+                         (log/debug "Message to handle:\n" (util/pretty (select-keys v [:client-id :connected-uids :uid :event])))))
                      (try
                        (handle-ws-event-loop-msg {:ch ch
                                                   :rcvr rcvr
