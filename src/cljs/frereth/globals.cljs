@@ -77,11 +77,13 @@ app-state atom"
 (s/defn add-world!
   ([{:keys [compiler-state url] :as template} :- fr-skm/world-template
      state :- s/Any]
-   (let [world-id (:id template)]
+   (let [world-id (:world-id template)]
      (swap! app-state
             (fn [existing]
               (let [worlds (:worlds existing)]
                 (when-let [already-added (get worlds world-id)]
+                  (log/error "Duplicate world id: '" (pr-str world-id)
+                             "' in: " (-> app-state deref :worlds keys))
                   (raise {:duplicate-world world-id
                           :url url
                           :state state

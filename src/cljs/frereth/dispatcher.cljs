@@ -76,9 +76,11 @@ approach unified"
   "Have client notify a server that we want to learn about its world(s)"
   [send-fn
    world-description :- fr-skm/world-template]
-  (js/alert "Sending blank-slate request for '" (pr-str world-description) "'")
+  (log/debug "Why am I getting nothing for the type/string of " (keys world-description) "?")
+  (let [msg (str "Sending blank-slate request for world " (:world-id world-description ", a\n"))]
+    (js/alert msg))
   (send-standard-event send-fn :frereth/blank-slate {:url (:url world-description)
-                                                     :request-id (:id world-description)}))
+                                                     :request-id (:world-id world-description)}))
 
 (defn connect-to-initial-world!
   [send-fn]

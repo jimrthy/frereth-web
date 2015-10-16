@@ -212,9 +212,12 @@ Until/unless I memoize it.
 (s/defn initialize-world! :- fr-skm/world-template
   "TODO: Really need a way to load multiple views of the same world instance"
   [url :- fr-skm/world-id]
-  {:id (uuid/make-random-uuid)
-   :compiler-state (initialize-compiler)
-   :url url})
+  (try
+    {:world-id (uuid/make-random-uuid)
+     :compiler-state (initialize-compiler)
+     :url url}
+    (catch js/Error ex
+      (log/error ex "Initializing a new empty world failed!"))))
 
 (defn transition-to-world!
   [to-activate]
