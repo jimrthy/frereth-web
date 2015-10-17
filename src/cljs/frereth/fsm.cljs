@@ -35,7 +35,7 @@
 
 (def renderable-world-description
   {:renderer (s/=> s/Any)
-   :name fr-skm/world-id})
+   :request-id fr-skm/world-id})
 
 (defmulti pre-process-body
   "Convert the supplied world description into something generically useful/usable
@@ -108,25 +108,31 @@ TODO: This really should happen in the client"
   (let [request {:module-name name, :macro? macros :path path :world world-id}]
     (send-fn request)))
 
-(s/defn pre-process-script :- fr-skm/compiler-black-box
+(s/defn pre-process-script!
   "Q: Isn't this really just 'process script'?
 We very well might get updated functions to run as the world changes"
-  [compiler-state :- fr-skm/compiler-black-box
+  [world-key :- fr-skm/world-id
    loader :- (s/=> s/Any library-spec)
    name :- s/Str
-   forms :- [[]]]
-  (let [compiler-state (raise {:not-implemented "Pull from init'd world"})]
-    (doseq [form forms]
-      (cljs/eval compiler-state
-                 form
-                 {:eval cljs/js-eval
-                  :load loader}
-                 (fn [{:keys [error ns value] :as res}]
-                   (log/debug "Evaluating initial forms for "
-                              name
-                              ":\n"
-                              (pr-str res)))))
-    compiler-state))
+   forms   ; Q: What's a good schema for this? :- [[]]
+   ]
+  (log/debug "Processing script for the" (pr-str world-key) "compiler")
+  (if-let [compiler-state (global/get-compiler-state world-key)]
+    (do
+      (log/debug "eval'ing script")
+      ;; This updates the compiler-state atom in place
+      ;; Q: Doesn't it?
+      (doseq [form forms]
+        (cljs/eval compiler-state
+                   form
+                   {:eval cljs/js-eval
+                    :load loader}
+                   (fn [{:keys [error ns value] :as res}]
+                     (log/debug "Evaluating initial forms for "
+                                name
+                                ":\n"
+                                (pr-str res))))))
+    (log/error "No compiler state for pre-processing script!!")))
 
 (defn pre-process-styling
   [styles]
@@ -137,13 +143,18 @@ We very well might get updated functions to run as the world changes"
   "This isn't named particularly well.
 
 Nothing better comes to mind at the moment."
-  [descr :- renderable-world-description
-   compiler-state :- fr-skm/compiler-black-box]
+  [descr :- renderable-world-description]
+  (log/debug "Have a description to make renderable.\nKeys available:\n" (keys descr))
   (let [data (:data descr)
         name (:name data)
         pre-processed (pre-process-body (select-keys data [:body :type :version]))
-        compiler-state (pre-process-script compiler-state loader name (:script data))
+        world-id (:request-id descr)
+        _ (pre-process-script! world-id loader name (:script data))
         styling (pre-process-styling (:css data))]
+    ;; This really shouldn't happen here.
+    ;; TOOD: Move it into globals ns
+    ;; Q: What about compiler-state?
+    (log/debug "Everything processed. Updating world state")
     (swap! global/app-state (fn [current]
                               ;; Add newly created world to the set we know about
                               ;; TODO: Seems like we might want to consider closing
@@ -153,8 +164,8 @@ Nothing better comes to mind at the moment."
                                         [:worlds name]
                                         (assoc (:data descr)
                                                :body (:body pre-processed)
-                                               :repl {:state compiler-state}
-                                               :css styling))))))
+                                               :css styling))))
+    (log/debug "Global app-state updated")))
 
 (defn get-file
   "Copied straight from swannodette's cljs-bootstrap sample"
@@ -267,8 +278,9 @@ Initializing '"
                ;; w/ the built-in
                ;; TODO: Come up with something better
                (pr-str (:name data))
-               "' World:
-=========================================\n"
+               "' World:"
+               (pr-str request-id)
+               "=========================================\n"
                (pr-str destination))
      (try
        (log/debug "Keys in new world body: " (keys destination))
@@ -278,12 +290,12 @@ Initializing '"
      (when (= description :hold-please)
        (raise {:obsolete "Why don't I have the handshake toggle fixed?"}))
 
-     (let [compiler-state "TODO: pull this from...where?"]
-       (js/alert "New world to make renderable")
-       (make-renderable! description compiler-state)
-       ;; It's very tempting to call set-active-world! as the next step
-       ;; But, really, that's up to the caller
-       (when transition
-         (global/set-active-world! request-id)))))
+     (js/alert "Making new world renderable")
+     (make-renderable! description)
+     ;; It's very tempting to call set-active-world! as the next step
+     ;; But, really, that's up to the caller
+
+     (when transition
+       (global/set-active-world! request-id))))
   ([data]
    (start-world! data false)))

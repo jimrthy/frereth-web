@@ -78,7 +78,7 @@ approach unified"
    world-description :- fr-skm/world-template]
   (log/debug "Why am I getting nothing for the type/string of " (keys world-description) "?")
   (let [msg (str "Sending blank-slate request for world " (:world-id world-description ", a\n"))]
-    (js/alert msg))
+    (log/debug msg))
   (send-standard-event send-fn :frereth/blank-slate {:url (:url world-description)
                                                      :request-id (:world-id world-description)}))
 

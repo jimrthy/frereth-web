@@ -12,6 +12,14 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
+(def repl-state
+  "Pieces involved in a world's REPL
+This is probably overly simplistic, but it's a start"
+  {:heading s/Str
+   :output [s/Str]
+   :input s/Str
+   :state fr-skm/compiler-black-box})
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -57,6 +65,14 @@ Really just a helper function because I'm not crystal-clear on the shape of the
 app-state atom"
   [world-key]
   (-> app-state deref :worlds (get world-key) :state))
+
+(s/defn get-world-repl :- repl-state
+  [world-key :- fr-skm/world-id]
+  (-> app-state deref :worlds (get world-key) :repl))
+
+(s/defn get-compiler-state
+  [world-key :- fr-skm/world-id]
+  (:state (get-world-repl world-key)))
 
 (defn get-active-world
   []
