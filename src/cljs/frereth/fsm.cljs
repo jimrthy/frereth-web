@@ -88,7 +88,10 @@ TODO: This really should happen in the client"
    world-id
    {:keys [name macros path] :as libspec}
    cb]
-  (log/debug "Trying to load" name "at" path)
+  (let [msg (str "Trying to load '" name "' at '" path "' with macros: " macros
+             "\nAKA:\n'" libspec
+             "'\nworld-id:" world-id)]
+    (log/debug msg))
   (comment
     ;; This is what the server needs to do
     ;; TODO: Actually load the requested library
@@ -106,7 +109,9 @@ TODO: This really should happen in the client"
                     :source-map source-map}]
         (cb result))))
   (let [request {:module-name name, :macro? macros :path path :world world-id}]
-    (send-fn request)))
+    ;; TODO: Need a request/response exchange w/ the server
+    (send-fn request)
+    (cb nil)))
 
 (s/defn pre-process-script!
   "Q: Isn't this really just 'process script'?
@@ -118,21 +123,23 @@ We very well might get updated functions to run as the world changes"
    ]
   (log/debug "Processing script for the" (pr-str world-key) "compiler")
   (if-let [compiler-state (global/get-compiler-state world-key)]
+    ;; This updates the compiler-state atom in place
+    ;; Q: Doesn't it?
+    (doseq [form forms]
+      (log/debug "Eval'ing:\n" (pr-str form))
+      (cljs/eval compiler-state
+                 form
+                 {:eval cljs/js-eval
+                  :load loader}
+                 (fn [{:keys [error ns value] :as res}]
+                   (log/debug "Evaluating initial forms for "
+                              name
+                              ":\nError:" (pr-str error)
+                              "\nSuccess Value:" (pr-str value)
+                              "\nns:" (pr-str ns)))))
     (do
-      (log/debug "eval'ing script")
-      ;; This updates the compiler-state atom in place
-      ;; Q: Doesn't it?
-      (doseq [form forms]
-        (cljs/eval compiler-state
-                   form
-                   {:eval cljs/js-eval
-                    :load loader}
-                   (fn [{:keys [error ns value] :as res}]
-                     (log/debug "Evaluating initial forms for "
-                                name
-                                ":\n"
-                                (pr-str res))))))
-    (log/error "No compiler state for pre-processing script!!")))
+      (log/error "No compiler state for pre-processing script at" world-key "!!")
+      (raise :what-to-do?))))
 
 (defn pre-process-styling
   [styles]
