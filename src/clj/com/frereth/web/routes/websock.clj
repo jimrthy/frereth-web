@@ -133,20 +133,12 @@ sente at all."
                       "\nData: " (:?data ev-msg)))
   (async/thread
     (let [cpt (-> this :frereth-server :connection-manager)]
-      (if-let [responder (con-man/initiate-handshake cpt (:?data ev-msg) 5 2000)]
-        (let [response-chan (:respond responder)
-              [v c] (async/alts!! [response-chan (async/timeout 1000)])]
-          (if v
-            (do
-              (log/debug "Initiating handshake w/ Server returned:\n" (util/pretty v))
-              (reply this ev-msg :frereth/response {:status 200 :body "Handshake Completed"})
-              (let [{:keys [uid client-id]} ev-msg
-                    id (or client-id uid)]
-                (post (:send-fn ev-msg) id :frereth/start-world v)))
-            (let [msg (if (= c response-chan)
-                        "Handshaker closed response channel. This is bad."
-                        "Timed out waiting for response. This isn't great")]
-              (reply this ev-msg :http/internal-error {:status 500 :body (pr-str msg)}))))
+      (if-let [response (con-man/initiate-handshake cpt (:?data ev-msg) 5 2000)]
+        (do
+          (reply this ev-msg :frereth/response {:status 200 :body "Handshake Completed"})
+          (let [{:keys [uid client-id]} ev-msg
+                id (or client-id uid)]
+            (post (:send-fn ev-msg) id :frereth/start-world response)))
         (reply this ev-msg :http/bad-gateway {:status 502 :body "Handshake initiation failed"})))))
 
 (s/defn ping
