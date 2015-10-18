@@ -149,35 +149,50 @@ sente at all."
 
 (s/defn request-ns-load!
   [this :- WebSockHandler
-   {:keys [module-name macro? path world] :as data}]
+   {:keys [module-name macro? path request-id world] :as data}
+   on-success]
   ;; Q: Does it make sense to spawn the thread here? Or in the caller?
   ;; A: It depends on whether these handlers should always run in their
   ;; own thread, of course.
   ;; For that matter, it might make the most sense to just pass a
   ;; parameter to rpc to decide whether to spawn a new thread or not
-  (async/thread
-    (let [mgr (-> this :frereth-server :connection-manager)
-          response
-              (manage
-           (con-man/rpc-sync world
-                        :frereth/load-ns
-                        (select-keys [module-name macro? path]))
-           ;; For now, just insert handlers directly into the code
-           ;; to be compiled
-           ;; TODO: Come up w/ a better strategy
-           ;; If nothing else, this sort of thing seems like it would be
-           ;; more appropriate in the client.
-           ;; Except that, as far as the client is concerned, there's
-           ;; no real hint about what we're doing.
-           ;; So maybe this should be a wrapper in there around rpc
-           ;; Get it working first, then worry about getting it to work
-           ;; correctly.
-           (on :timeout []
-               {:script '(raise :timeout)}))]
-      (reply this
-             data
-             :frereth/loaded-ns
-             response))))
+  (log/debug "Requesting namespace load:\n" (keys data))
+  (let [background-thread
+        (async/go
+          (let [mgr (-> this :frereth-server :connection-manager)
+                response
+                (manage
+                 (let [result
+                       (con-man/rpc-sync this
+                                         world
+                                         :frereth/load-ns
+                                         (select-keys data [:module-name :macro? :path]))]
+                   (log/debug "rpc-sync returned" result)
+                   result)
+                 ;; For now, just insert handlers directly into the code
+                 ;; to be compiled
+                 ;; TODO: Come up w/ a better strategy
+                 ;; If nothing else, this sort of thing seems like it would be
+                 ;; more appropriate in the client.
+                 ;; Except that, as far as the client is concerned, there's
+                 ;; no real hint about what we're doing.
+                 ;; So maybe this should be a wrapper in there around rpc
+                 ;; Get it working first, then worry about getting it to work
+                 ;; correctly.
+                 (on :timeout []
+                     ;; I think my plan here was to return this to the caller to be executed on the renderer
+                     (do
+                       (log/error "Synchronous RPC call timed out")
+                       {:script '(throw (ex-info (str "Loading ns:" module-name) {:timeout true}))})))]
+            (reply this
+                   data
+                   :frereth/loaded-ns
+                   response)))]
+    ;; Really don't want to block the caller
+    (comment (let [result (async/<!! background-thread)]
+               (log/debug "rpc-sync returned: " (pr-str result))
+               result))
+    background-thread))
 
 (s/defn initialize-connection!
   [this :- WebSockHandler
@@ -190,7 +205,7 @@ sente at all."
 
 (s/defn event-handler
   [this :- WebSockHandler
-   {:keys [id ?data event] :as ev-msg}]
+   {:keys [id ?data event ?reply-fn] :as ev-msg}]
   (when-not (= event [:chsk/ws-ping])
     ;; The ws-ping happens every 20 seconds.
     ;; And every 2...I may be setting up multiple event loops on the client
@@ -211,8 +226,8 @@ sente at all."
          ;; TODO: This seems like a pretty important detail
          [:chsk/uidport-close _] (log/error "Remote port closed: need to clean up its resources")
          [:chsk/ws-ping _] (ping this ev-msg)
+         [:cljs/load-ns _] (request-ns-load! this ?data ?reply-fn)
          [:frereth/blank-slate _] (initiate-auth! this ev-msg)
-         [:frereth/load-ns _] (request-ns-load! this ev-msg)
          [:frereth/pong _] (forward this ev-msg)
          [:frereth/response _] (log/info "Response from renderer:\n"
                                          (util/pretty ?data))
@@ -224,7 +239,12 @@ created by reset-web-socket-handler! so I can
 update on the fly.
 
 Besides, it's much more readable this way"
-  [{:keys [ch rcvr web-sock-handler] :as bundle}
+
+  [;; mish-mash because of the way this was refactored out of the middle of the loop
+   ;; ch is the channel that the request came in on
+   ;; rcvr is the channel where browser messages come from
+   ;; web-sock-handler...is probably the Component
+   {:keys [ch rcvr web-sock-handler] :as bundle}
    msg :- s/Any]
   (when-not web-sock-handler
     (log/error "Missing web socket handler in:\n" (util/pretty bundle))
@@ -262,10 +282,8 @@ the event loop"
            event-loop
            (async/go
              (loop []
-               (log/debug "Top of websocket event loop"  #_(util/pretty {:stopper stopper
-                                                                         :receiver rcvr
-                                                                         :ws-controller ws-controller
-                                                                         :web-sock-handler ((complement nil?) web-sock-handler)}))
+               (log/debug "Top of websocket event loop")
+
                ;; TODO: I'm pretty sure I have 5 minutes defined somewhere useful
                (let [t-o (async/timeout (* 1000 60 5))
                      [v ch] (async/alts! [t-o stopper rcvr ws-controller])]
@@ -273,7 +291,7 @@ the event loop"
                    (do
                      (let [event (-> v :event first)]
                        (when-not (= event :chsk/ws-ping)
-                         ;; Handle it, but don't log about it: this happens far too often
+                         ;; Handle the ping, but don't log about it: this happens far too often
                          ;; to spam the logs with the basic fact
                          (log/debug "Message to handle:\n" (util/pretty (select-keys v [:client-id :connected-uids :uid :event])))))
                      (try
