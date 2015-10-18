@@ -56,7 +56,8 @@
                  ;; immutant is schizophrenic about which version it uses
                  [org.slf4j/slf4j-api "1.7.6"]  ; TODO: Try bumping to 12
                  ;; and about this
-                 [org.jboss.logging/jboss-logging "3.2.1.Final"]
+                 #_[org.jboss.logging/jboss-logging "3.2.1.Final"]
+                 [org.jboss.logging/jboss-logging "3.1.4.GA"]
 
                  [prismatic/fnhouse "0.2.1" :exclusions [prismatic/plumbing]]
                  [ring/ring-core "1.4.0" :exclusions [commons-codec
