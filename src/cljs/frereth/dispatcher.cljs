@@ -57,7 +57,8 @@ approach unified"
     (send-fn event event-response-timeout-ms (partial standard-cb-notification event))))
 
 (defn real-dispatcher
-  [event]
+  [event
+   send-fn]
   (log/debug "real-dispatcher handling:\n" event)
   (let [[event-type
          body] event]
@@ -65,7 +66,7 @@ approach unified"
                "\nMessage Body:\n" body)
     (condp = event-type
     ;; Letting the server just take control here would be a horrible idea
-      :frereth/start-world (fsm/start-world! body true)
+      :frereth/start-world (fsm/start-world! body send-fn true)
       ;; I'm getting this and don't know why.
       ;; TODO: Track it down
       :http/not-found (log/error "Server Did Not Find:\n" body)
@@ -133,7 +134,7 @@ approach unified"
                         ;; its return value, but silently discarding it seems
                         ;; like a bad idea
                         (connect-to-initial-world! send-fn))
-    :chsk/recv (real-dispatcher ?data)
+    :chsk/recv (real-dispatcher ?data send-fn)
     :chsk/state (log/info "ChannelSock State message received:\n"
                           ?data)
     :frereth/response (do

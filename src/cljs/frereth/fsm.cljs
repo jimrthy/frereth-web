@@ -13,6 +13,7 @@
                                 raise-loop]]
             [sablono.core :as sablono :include-macros true]
             [schema.core :as s :include-macros true]
+            [taoensso.sente :as sente]
             [taoensso.timbre :as log])
   (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
                    [ribol.cljs :refer [raise]])
@@ -51,6 +52,10 @@ TODO: This really should happen in the client"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
+(def +loader-timeout+
+  "How long do we wait for a server to respond to a load-ns request?"
+  2000)
+
 (s/defmethod pre-process-body :default
   [description]
   (log/error "Don't know how to deal with a world that looks like:\n"
@@ -84,11 +89,11 @@ TODO: This really should happen in the client"
 
 (defn loader
   "Pull (probably pre-compiled) source from the server"
-  [send-fn
-   world-id
+  [world-id
+   send-fn
    {:keys [name macros path] :as libspec}
    cb]
-  (let [msg (str "Trying to load '" name "' at '" path "' with macros: " macros
+  (let [msg (str "Trying to load '" name "' at '" path "' with macros: " (pr-str macros)
              "\nAKA:\n'" libspec
              "'\nworld-id:" world-id)]
     (log/debug msg))
@@ -108,10 +113,25 @@ TODO: This really should happen in the client"
                     :cache cache
                     :source-map source-map}]
         (cb result))))
-  (let [request {:module-name name, :macro? macros :path path :world world-id}]
-    ;; TODO: Need a request/response exchange w/ the server
-    (send-fn request)
-    (cb nil)))
+  (let [?ev-data {:module-name name, :macro? macros :path path :world world-id :request-id (uuid/make-random-uuid)}
+        internal-cb (fn [reply]
+                      (log/debug "Response to ns load request:\n" (pr-str reply))
+                      (if (sente/cb-success? reply)
+                        (do
+                          (log/debug "Client returned a legit response")
+                          (let [[ev-id data] reply
+                                status (:status data)]
+                            (if (= status 200)
+                              (do
+                                (log/debug "Have a ns to load")
+                                (cb (:body data)))
+                              (do
+                                (log/error "...but it wasn't a ns we can load")
+                                (cb nil)))))
+                        (do
+                          (log/debug "ns load response was a communications failure")
+                          (cb nil))))]
+    (send-fn [:cljs/load-ns ?ev-data] +loader-timeout+ internal-cb)))
 
 (s/defn pre-process-script!
   "Q: Isn't this really just 'process script'?
@@ -123,20 +143,39 @@ We very well might get updated functions to run as the world changes"
    ]
   (log/debug "Processing script for the" (pr-str world-key) "compiler")
   (if-let [compiler-state (global/get-compiler-state world-key)]
-    ;; This updates the compiler-state atom in place
-    ;; Q: Doesn't it?
-    (doseq [form forms]
-      (log/debug "Eval'ing:\n" (pr-str form))
-      (cljs/eval compiler-state
-                 form
-                 {:eval cljs/js-eval
-                  :load loader}
-                 (fn [{:keys [error ns value] :as res}]
-                   (log/debug "Evaluating initial forms for "
-                              name
-                              ":\nError:" (pr-str error)
-                              "\nSuccess Value:" (pr-str value)
-                              "\nns:" (pr-str ns)))))
+    (let [waiter (async/chan)]
+      (go-loop [form (first forms)
+                remainder (rest forms)]
+        (log/debug "Eval'ing:\n" (pr-str form))
+        ;; This updates the compiler-state atom in place
+        ;; Q: Doesn't it?
+        (cljs/eval compiler-state
+                   form
+                   {:eval cljs/js-eval
+                    :load loader}
+                   (fn [{:keys [error ns value] :as res}]
+                     (try
+                       (log/debug "Evaluating initial forms for "
+                                  name
+                                  ":\nError:" (pr-str error)
+                                  "\nSuccess Value:" (pr-str value)
+                                  "\nns:" (pr-str ns))
+                       (if value
+                         (async/>! waiter value)
+                         (async/close! waiter))
+                       (catch js/Error ex
+                         (log/error ex "Trying to log eval outcome")
+                         (async/close! waiter)))))
+        (let [[success channel] (async/alts! [waiter (async/timeout +loader-timeout+)])]
+          (if-not success
+            (let [msg (str "Evaluation didn't succeed:\n"
+                           (if (= channel waiter)
+                             "Evaluator signalled failure"
+                             "Timed out"))]
+              (log/error msg)
+              (raise :eval-failure))
+            (when (seq remainder)
+              (recur (first remainder) (rest remainder)))))))
     (do
       (log/error "No compiler state for pre-processing script at" world-key "!!")
       (raise :what-to-do?))))
@@ -150,18 +189,20 @@ We very well might get updated functions to run as the world changes"
   "This isn't named particularly well.
 
 Nothing better comes to mind at the moment."
-  [descr :- renderable-world-description]
+  [descr :- renderable-world-description
+   send-fn]
   (log/debug "Have a description to make renderable.\nKeys available:\n" (keys descr))
   (let [data (:data descr)
         name (:name data)
         pre-processed (pre-process-body (select-keys data [:body :type :version]))
         world-id (:request-id descr)
-        _ (pre-process-script! world-id loader name (:script data))
+        script-loader (partial loader world-id send-fn)
+        eval-go-block (pre-process-script! world-id script-loader name (:script data))
         styling (pre-process-styling (:css data))]
     ;; This really shouldn't happen here.
     ;; TOOD: Move it into globals ns
     ;; Q: What about compiler-state?
-    (log/debug "Everything processed. Updating world state")
+    (log/debug "Body and CSS processed. Script handling queued. Updating world state")
     (swap! global/app-state (fn [current]
                               ;; Add newly created world to the set we know about
                               ;; TODO: Seems like we might want to consider closing
@@ -172,37 +213,8 @@ Nothing better comes to mind at the moment."
                                         (assoc (:data descr)
                                                :body (:body pre-processed)
                                                :css styling))))
-    (log/debug "Global app-state updated")))
-
-(defn get-file
-  "Copied straight from swannodette's cljs-bootstrap sample"
-  [url]
-  (raise :not-implemented "TODO: Load this over sente instead")
-  (let [c (async/chan)]
-    (.send XhrIo url
-           (fn [e]
-             (comment
-               (log/info "Server response re: "
-                         url
-                         "\n"
-                         (pr-str e)
-                         "\naka\n"
-                         ;; Object is not ISeqable
-                         #_(mapcat (fn [[k v]]
-                                     (str "\n" k " : " v))
-                                   e)
-                         #_(pr-str (js->clj e :keywordize-keys true)))
-               ;; This is really what I was looking for
-               ;; TODO: Turn this into a utility function, if only so I
-               ;; don't have to keep digging around for it
-               (.dir js/console e))
-             (let [target (.-target e)
-                   outcome {(if (.isSuccess target)
-                              :success
-                              :fail)
-                            (.getResponseText target)}]
-               (async/put! c outcome))))
-    c))
+    (log/debug "Global app-state updated")
+    eval-go-block))
 
 (defn initialize-compiler
   "Set up a compilation environment that's ready to be useful
@@ -215,7 +227,6 @@ around one function call.
 Until/unless I memoize it.
 "
   []
-  (log/debug "Initializing compiler")
   ;; Note that empty-state accepts an init function
   ;; Q: What's that for?
   (cljs/empty-state))
@@ -236,10 +247,6 @@ Until/unless I memoize it.
      :url url}
     (catch js/Error ex
       (log/error ex "Initializing a new empty world failed!"))))
-
-(defn transition-to-world!
-  [to-activate]
-  (raise {:obsolete "Just call global/set-active-world! instead"}))
 
 ;; To aid in debugging. What did the server send me last?
 (defonce most-recent-world-description
@@ -266,15 +273,14 @@ TODO: Limit the amount of time spent here
 Q: Can I do that by sticking it in a go loop, trying to alts! it
 with a timeout, and then somehow cancelling the transaction if it times
 out?"
-  ([{:keys [data]
+  ([{:keys [data request-id]
      :as description}
+    send-fn
     transition :- s/Bool]
    ;; Just to make it easier to track what I'm seeing during debugging
    (reset! most-recent-world-description description)
 
-   (let [{:keys [action-url
-                 expires
-                 request-id
+   (let [{:keys [expires
                  session-token
                  world]
           :as destination} data]
@@ -288,9 +294,11 @@ Initializing '"
                "' World:"
                (pr-str request-id)
                "=========================================\n"
-               (pr-str destination))
+               (pr-str description))
      (try
-       (log/debug "Keys in new world body: " (keys destination))
+       (log/debug "Keys in new world body: " (keys destination)
+                  "\nin data:" (keys data)
+                  "\nin description:" (keys description))
        (catch js/Error ex
          (log/error "This really isn't a legal world description")))
 
@@ -298,11 +306,18 @@ Initializing '"
        (raise {:obsolete "Why don't I have the handshake toggle fixed?"}))
 
      (js/alert "Making new world renderable")
-     (make-renderable! description)
-     ;; It's very tempting to call set-active-world! as the next step
-     ;; But, really, that's up to the caller
-
-     (when transition
-       (global/set-active-world! request-id))))
-  ([data]
-   (start-world! data false)))
+     (let [eval-go-block (make-renderable! description send-fn)]
+       (go
+         (if-let [success (async/<! eval-go-block)]
+           (do
+             (log/info "Initial evaluation completed successfully:\n"
+                       (pr-str success)
+                       "\nTransitioning to that world")
+             (when transition
+               (global/set-active-world! request-id)))
+           (do
+             (log/info "Initial evaluation failed")
+             ;; TODO: Error handling
+             (raise {:not-implemented "Start by just deleting that world"})))))))
+  ([data send-fn]
+   (start-world! data send-fn false)))
