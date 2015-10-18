@@ -38,7 +38,9 @@
   :dependencies [[org.clojure/clojure "1.7.0"] ; absolutely should not need this
                  ;; Probably only useful server-side
                  [com.cognitect/transit-clj "0.8.275"]
-                 [org.immutant/immutant "2.0.2" :exclusions [clj-tuple
+                 ;; TODO: How many of these exclusions are still needed?
+                 ;; And do more get added w/ this version bump?
+                 [org.immutant/immutant "2.1.0" :exclusions [clj-tuple
                                                              org.clojure/clojure
                                                              org.clojure/java.classpath
                                                              org.clojure/tools.reader
@@ -81,7 +83,7 @@
                  #_[cider/cider-nrepl "0.9.1"]  ; definitely should not need to do this
                  ;; Really should inherit my clojure version from this.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
-                 [com.taoensso/sente "1.6.0" :exclusions [org.clojure/clojure
+                 [com.taoensso/sente "1.7.0-RC1" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
                  ;; Shouldn't need this here, but it isn't being picked up in my profile
                  [figwheel "0.3.7" :exclusions [cider/cider-nrepl
