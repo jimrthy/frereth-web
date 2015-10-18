@@ -37,7 +37,7 @@
 
   :dependencies [[org.clojure/clojure "1.7.0"] ; absolutely should not need this
                  ;; Probably only useful server-side
-                 [com.cognitect/transit-clj "0.8.275"]
+                 [com.cognitect/transit-clj "0.8.283"]
                  ;; TODO: How many of these exclusions are still needed?
                  ;; And do more get added w/ this version bump?
                  [org.immutant/immutant "2.1.0" :exclusions [clj-tuple
@@ -49,12 +49,16 @@
                                                              org.hornetq/hornetq-journal
                                                              org.hornetq/hornetq-native
                                                              org.hornetq/hornetq-server
+                                                             org.jboss.logging/jboss-logging
                                                              org.jgroups/jgroups
                                                              org.slf4j/slf4j-api
                                                              riddley]]
                  ;; immutant is schizophrenic about which version it uses
                  [org.slf4j/slf4j-api "1.7.6"]  ; TODO: Try bumping to 12
-                 [prismatic/fnhouse "0.2.0" :exclusions [prismatic/plumbing]]
+                 ;; and about this
+                 [org.jboss.logging/jboss-logging "3.2.1.Final"]
+
+                 [prismatic/fnhouse "0.2.1" :exclusions [prismatic/plumbing]]
                  [ring/ring-core "1.4.0" :exclusions [commons-codec
                                                           joda-time
                                                           org.clojure/clojure
@@ -63,16 +67,16 @@
                  [ring/ring-defaults "0.1.5" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
                  [ring/ring-headers "0.1.3" :exclusions [org.clojure/clojure]]
-                 [ring-middleware-format "0.5.0" :exclusions [org.clojure/clojure
+                 [ring-middleware-format "0.6.0" :exclusions [org.clojure/clojure
                                                               org.clojure/tools.reader]]
 
                  ;;; Client-Specific...more or less
                  [cljsjs/three "0.0.70-0"]
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
-                 [com.cognitect/transit-cljs "0.8.220"]
+                 [com.cognitect/transit-cljs "0.8.225"]
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
-                 [org.clojure/clojurescript "1.7.48" :exclusions [org.clojure/clojure
+                 [org.clojure/clojurescript "1.7.145" :exclusions [org.clojure/clojure
                                                                         org.clojure/tools.reader]]
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
                  [sablono "0.3.6"]
@@ -80,17 +84,16 @@
                                                  org.clojure/clojurescript]]
 
                  ;;; Generally Useful
-                 #_[cider/cider-nrepl "0.9.1"]  ; definitely should not need to do this
                  ;; Really should inherit my clojure version from this.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
-                 [com.taoensso/sente "1.7.0-RC1" :exclusions [org.clojure/clojure
-                                                          org.clojure/tools.reader]]
-                 ;; Shouldn't need this here, but it isn't being picked up in my profile
-                 [figwheel "0.3.7" :exclusions [cider/cider-nrepl
+                 [com.taoensso/sente "1.7.0-RC1" :exclusions [com.taoensso/timbre
+                                                              org.clojure/clojure
+                                                              org.clojure/tools.reader]]
+                 [figwheel "0.4.1" :exclusions [cider/cider-nrepl
                                                 org.clojure/clojure
                                                 org.clojure/clojurescript]]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
-                 [figwheel-sidecar "0.3.7" :exclusions [cider/cider-nrepl
+                 [figwheel-sidecar "0.4.1" :exclusions [cider/cider-nrepl
                                                         org.clojure/clojure
                                                         org.clojure/clojurescript
                                                         org.clojure/java.classpath]]
