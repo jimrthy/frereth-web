@@ -20,6 +20,8 @@ This is probably overly simplistic, but it's a start"
    :input s/Str
    :state fr-skm/compiler-black-box})
 
+(defrecord app-state)
+
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -50,6 +52,14 @@ This is probably overly simplistic, but it's a start"
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
+
+(defonce system
+  "This is what the Components library is going to use to
+  start/stop the world everytime figwheel signals a world
+  change.
+
+  Actually, when I put it that way, it seems pretty klunky and dubious."
+  nil)
 
 (s/defn swap-world-state!
   [which :- fr-skm/world-id

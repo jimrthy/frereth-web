@@ -35,8 +35,9 @@
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [[org.clojure/clojure "1.7.0"] ; absolutely should not need this
-                 ;; Probably only useful server-side
+  :dependencies [[org.clojure/clojure "1.8.0-RC3"] ; absolutely should not need this
+
+                 ;;; Libraries that are probably only useful server-side
                  [com.cognitect/transit-clj "0.8.283"]
                  ;; TODO: How many of these exclusions are still needed?
                  ;; And do more get added w/ this version bump?

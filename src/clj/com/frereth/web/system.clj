@@ -48,6 +48,8 @@ TODO: Move to a Component in common"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
+;;;; This is a mess
+;;;; TODO: Clean up the old left-overs
 (s/defn ctor :- SystemMap
   "Returns a system that's ready to start, based on config
 files.
