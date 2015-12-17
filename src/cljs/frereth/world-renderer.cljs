@@ -1,4 +1,4 @@
-(ns frereth.world
+(ns frereth.world-renderer
   "Big-picture world-rendering stuff"
   (:require-macros [schema.macros :as sm]
                    [schema.core :as s])
