@@ -12,14 +12,7 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-(def repl-state
-  "Pieces involved in a world's REPL
-This is probably overly simplistic, but it's a start"
-  {:heading s/Str
-   :output [s/Str]
-   :input s/Str
-   :state fr-skm/compiler-black-box})
-
+;;; Q: Is there any point to this any more?
 (defrecord app-state)
 
 
@@ -59,7 +52,7 @@ This is probably overly simplistic, but it's a start"
   change.
 
   Actually, when I put it that way, it seems pretty klunky and dubious."
-  nil)
+  (atom))
 
 (s/defn swap-world-state!
   [which :- fr-skm/world-id

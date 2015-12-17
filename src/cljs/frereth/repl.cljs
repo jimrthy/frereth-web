@@ -5,7 +5,9 @@
                    [schema.core :as s])
   (:require [cljs.js :as cljs]
             [cljs.core.async :refer [put! <!] :as async]
-            [frereth.globals :as global]
+            ;; Relying on this here was always a bad idea
+            #_[frereth.globals :as global]
+            [frereth.schema :as fr-skm]
             [om.core :as om]
             [om.dom :as dom]
             [taoensso.timbre :as log]))
@@ -14,6 +16,14 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
+
+(def repl-state
+  "Pieces involved in a world's REPL
+This is probably overly simplistic, but it's a start"
+  {:heading s/Str
+   :output [s/Str]
+   :input s/Str
+   :state fr-skm/compiler-black-box})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -73,58 +83,63 @@
   (reify
     om/IInitState
     (init-state
-     [_]
-     {:input ""
-      :namespace "user"})
+        [_]
+      {:input ""
+       :namespace "user"})
     om/IRenderState
     (render-state
-     [this {:keys [input namespace]}]
-     ;; Relying on global state here violates the fundamental contract
-     ;; upon which Om is built.
-     ;; More importantly, we should already have this available
-     ;; At a higher level in the call stack
-     ;; This was a crude hack to begin with
-     ;; TODO: Move it somewhere more sensible
-     ;; Q: Where?
-     ;; Well, this interface needs serious rework from the ground up.
-     ;; It really should be something like a collection of tabbed windows.
-     (let [world-id (-> global/app-state deref :active-world)
-           world-url "where"]
-       (dom/div nil
-                (dom/input #js {:placeholder (str namespace " =>")
-                                :type "text"
-                                :ref "to-read"}
-                           nil)
-                (dom/br nil nil)
-                ;; TODO: Inline click handlers are *so* jquery
-                (dom/input #js {:type "button"
-                                :onClick (fn [e]
-                                           (let [elm (om/get-node owner "to-read")
-                                                 forms (.-value elm)
-                                                 evaluator (om/get-state owner :evaluator)]
-                                             (println "I've been clicked! Sending\n"
-                                                      forms "\nto\n" evaluator
-                                                      "which is" (if evaluator "" " not") "truthy")
-                                             ;; I'm getting a warning about returning false from an event handler.
-                                             ;; Q: Why?
-                                             (if forms
-                                               (put! evaluator forms)
-                                               true)))
-                                :value "Eval!"}
-                           nil)
-                (dom/input #js {:type "button"
-                                :onClick (fn [e]
-                                           (if world-id
-                                             (if-let [send-fn (-> global/app-state deref :channel-socket :send!)]
-                                               (do
-                                                 ;; Really need to break down and implement an event loop
-                                                 ;; Or something along those lines.
-                                                 ;; Whichever: this led to circular imports
-                                                 (comment (dispatcher/send-blank-slate! send-fn world-id world-url))
-                                                 (js/alert "Reconnecting broken"))
-                                               (js/alert "Missing send!"))
-                                             (js/alert "No currently active world: don't know where to try to re-connect")))
-                                :value "Reconnect"}))))))
+        [this {:keys [input namespace]}]
+      ;; Relying on global state here violates the fundamental contract
+      ;; upon which Om is built.
+      ;; More importantly, we should already have this available
+      ;; At a higher level in the call stack
+      ;; This was a crude hack to begin with
+      ;; TODO: Move it somewhere more sensible
+      ;; Q: Where?
+      ;; A: world-manager
+      ;; Well, this interface needs serious rework from the ground up.
+      ;; It really should be something like a collection of tabbed windows.
+      ;; Note that this really means that the following line (and
+      ;; everything else that relies on the global ns later) is
+      ;; horribly broken at the moment
+      (throw (ex-info "Start Here" {:why "Components got interesting"}))
+      (let [world-id (-> global/app-state deref :active-world)
+            world-url "where"]
+        (dom/div nil
+                 (dom/input #js {:placeholder (str namespace " =>")
+                                 :type "text"
+                                 :ref "to-read"}
+                            nil)
+                 (dom/br nil nil)
+                 ;; TODO: Inline click handlers are *so* jquery
+                 (dom/input #js {:type "button"
+                                 :onClick (fn [e]
+                                            (let [elm (om/get-node owner "to-read")
+                                                  forms (.-value elm)
+                                                  evaluator (om/get-state owner :evaluator)]
+                                              (println "I've been clicked! Sending\n"
+                                                       forms "\nto\n" evaluator
+                                                       "which is" (if evaluator "" " not") "truthy")
+                                              ;; I'm getting a warning about returning false from an event handler.
+                                              ;; Q: Why?
+                                              (if forms
+                                                (put! evaluator forms)
+                                                true)))
+                                 :value "Eval!"}
+                            nil)
+                 (dom/input #js {:type "button"
+                                 :onClick (fn [e]
+                                            (if world-id
+                                              (if-let [send-fn (-> global/app-state deref :channel-socket :send!)]
+                                                (do
+                                                  ;; Really need to break down and implement an event loop
+                                                  ;; Or something along those lines.
+                                                  ;; Whichever: this led to circular imports
+                                                  (comment (dispatcher/send-blank-slate! send-fn world-id world-url))
+                                                  (js/alert "Reconnecting broken"))
+                                                (js/alert "Missing send!"))
+                                              (js/alert "No currently active world: don't know where to try to re-connect")))
+                                 :value "Reconnect"}))))))
 
 (defn evaluate
   [cursor forms]

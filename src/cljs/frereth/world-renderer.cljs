@@ -6,6 +6,7 @@
   (:require [frereth.repl :as repl]
             [frereth.schema :as fr-skm]
             [frereth.three :as three]
+            [frereth.world-manager :refer (WorldManager)]
             [om.core :as om]
             [om.dom :as dom]
             [schema.core :as s]
@@ -13,6 +14,24 @@
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
+
+(declare world-wrapper)
+(s/defrecord WorldRenderer
+    [manager :- WorldManager]
+  component/Lifecycle
+  (start
+      [this]
+    (om/root
+     ;; This is weak. Really need to allow multiple
+     ;; worlds at once.
+     ;; But it's a start
+     (:current manager)
+     app-state
+     {:target (. js/document (getElementById "everything"))})
+    this)
+  (stop
+      [this]
+    this))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -87,9 +106,8 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defn start
-  [app-state]
-  (om/root
-   world-wrapper
-   app-state
-   {:target (. js/document (getElementById "everything"))}))
+(defn ctor
+  ([manager]
+   (map->WorldRenderer {:manager manager}))
+  ([]
+   (->WorldRenderer)))

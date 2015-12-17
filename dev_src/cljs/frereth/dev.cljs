@@ -15,14 +15,14 @@
   ;; system descriptor for dev than prod?
   ;; Well, besides for the things that will obviously change, like
   ;; URLs and passwords
-  (alter-var-root #'global/system
-                  (constantly (system/ctor nil nil))))
+  (swap! global/system
+         (constantly (system/ctor nil nil))))
 
 (defn start
   "Starts the current development system"
   []
   (try
-    (alter-var-root #'system component/start)
+    (swap! global/system component/start)
     (catch RuntimeException ex
       (try
         (log/error ex "Failed to start system")
@@ -36,7 +36,7 @@
 (defn stop
   "Shuts down and destroys the current development system."
   []
-  (alter-var-root #'system
+  (swap! global/system
     (fn [s] (when s (component/stop s)))))
 
 (defn go
