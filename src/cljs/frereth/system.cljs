@@ -3,11 +3,10 @@
 
 Or maybe the ligaments. This is where all the boot-time Components
 get declared and wired together"
-  (:require [com.stuartsierra.component :refer (SystemMap)]
+  (:require [clojure.lang :refer (ExceptionInfo)]
+ [com.stuartsierra.component :refer (SystemMap)]
             [component-dsl.system :as cpt-dsl]
-            [schema.core :as s])
-  ;; Q: What does this look like in clojurescript?
-  (:import [clojure.lang ExceptionInfo]))
+            [schema.core :as s]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public

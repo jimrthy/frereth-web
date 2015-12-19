@@ -15,7 +15,6 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-(declare world-wrapper)
 (s/defrecord WorldRenderer
     [manager :- WorldManager]
   component/Lifecycle

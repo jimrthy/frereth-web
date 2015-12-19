@@ -13,7 +13,7 @@
 ;;; Schema
 
 ;;; Q: Is there any point to this any more?
-(defrecord app-state)
+(defrecord app-state [])
 
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
@@ -46,12 +46,12 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(defonce system
-  "This is what the Components library is going to use to
-  start/stop the world everytime figwheel signals a world
-  change.
+;; This is what the Components library is going to use to
+;; start/stop the world everytime figwheel signals a world
+;; change.
 
-  Actually, when I put it that way, it seems pretty klunky and dubious."
+;; Actually, when I put it that way, it seems pretty klunky and dubious.
+(defonce system
   (atom))
 
 (s/defn swap-world-state!

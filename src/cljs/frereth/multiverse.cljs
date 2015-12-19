@@ -16,12 +16,27 @@ job in globals"
 (def world-map
   {fr-skm/world-id world-description})
 
-(s/defrecord Multiverse [worlds :- world-map]
+(s/defrecord Multiverse [initial :- world-description
+                         worlds :- world-map]
   component/Lifecycle
   (start
       [this]
     (let [worlds (or worlds
-                     {:localhost })])))
+                     {:localhost initial})]
+      (doseq [world worlds]
+        (component/start world))
+      (assoc this :worlds worlds)))
+  (stop
+      [this]
+    ;; It's tempting to dissoc everything except the
+    ;; initial localhost.
+    ;; That seems like valuable functionality, but it
+    ;; doesn't really belong in here.
+    ;; It seems to be more like the job of a SessionManager
+    ;; that, really, belongs on the localhost server
+    (doseq [world worlds]
+      (component/stop world))
+    this))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -30,5 +45,6 @@ job in globals"
 ;;; Public
 
 (s/defn ctor :- Multiverse
-  [worlds :- (s/Maybe world-map)]
-  (map->Multiverse {:worlds worlds}))
+  [args
+   worlds :- (s/Maybe world-map)]
+  (map->Multiverse (select-keys [initial worlds])))

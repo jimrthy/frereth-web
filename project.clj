@@ -3,6 +3,10 @@
 
   :cljsbuild {
     :builds [{:id "dev"
+              ;; Q: Is this still relevant?
+              ;; TODO: Check the figwheel docs to see what this should look like
+              ;; Doubt there's any way to avoid it, but it is annoyingly specific
+              ;; without some sort of DNS
               :figwheel {:websocket-host "10.0.3.152"}
               :source-paths ["src/cljs" "dev_src/cljs"]
               ;; Different output targets should go to different paths
@@ -35,7 +39,7 @@
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [[org.clojure/clojure "1.8.0-RC3"] ; absolutely should not need this
+  :dependencies [[org.clojure/clojure "1.8.0-RC4"] ; absolutely should not need this (i.e. should inherit from frereth.common)
 
                  ;;; Libraries that are probably only useful server-side
                  [com.cognitect/transit-clj "0.8.283"]
@@ -78,8 +82,8 @@
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
                  [com.cognitect/transit-cljs "0.8.225"]
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
-                 [org.clojure/clojurescript "1.7.145" :exclusions [org.clojure/clojure
-                                                                        org.clojure/tools.reader]]
+                 [org.clojure/clojurescript "1.7.170" :exclusions [org.clojure/clojure
+                                                                   org.clojure/tools.reader]]
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
                  [sablono "0.3.6"]
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
@@ -145,7 +149,7 @@
 
   :plugins [[cider/cider-nrepl "0.9.1"] ; shouldn't need to do this. No idea what's pulling in 0.8.2.
             [com.jakemccrary/lein-test-refresh "0.9.0"]
-            [lein-cljsbuild "1.0.6" :exclusions [org.clojure/clojure]]
+            [lein-cljsbuild "1.1.2" :exclusions [org.clojure/clojure]]
             [lein-figwheel "0.3.5" :exclusions [org.codehaus.plexus/plexus-utils
                                                 org.clojure/clojure]]]
 

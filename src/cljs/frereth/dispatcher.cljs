@@ -5,7 +5,6 @@
             [frereth.fsm :as fsm]
             [frereth.globals :as global]
             [frereth.schema :as fr-skm]
-            [frereth.world :as world]
             [ribol.cljs :refer [create-issue
                                 *managers*
                                 *optmap*

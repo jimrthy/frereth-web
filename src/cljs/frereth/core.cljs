@@ -6,9 +6,10 @@ Right now, that isn't the case at all."
                      [schema.macros :as sm]
                      [schema.core :as s])
     (:require [cljs.core.async :as async]
+              [com.stuartsierra.component :as component]
               [frereth.dispatcher :as dispatcher]
               [frereth.globals :as global]
-              [frereth.world :as world]
+              [frereth.system :as system]
               [taoensso.sente :as sente :refer (cb-success?)]
               [taoensso.timbre :as log]))
 (enable-console-print!)
@@ -127,17 +128,22 @@ Right now, that isn't the case at all."
 (defn -main
   []
   (log/debug "Starting initial World")
-  (throw (ex-info "Start here" {:problem "Switch to Component"}))
-  (world/start global/app-state)
-  (comment
-    ;; Can't do this before we've created the canvas for
-    ;; drawing everything.
-    ;; It's tempting to just make that a hard-coded piece of
-    ;; the HTML, but different worlds can and should update canvas
-    ;; parameters as needed.
-    ;; Moved this into repl/world-wrapper's did-update handler
-    (log/debug "Starting 3-D graphics")
-    (three/start-graphics js/THREE))
+
+  ;; This really shouldn't be a global. It should be a local hidden
+  ;; inside here.
+  ;; That makes it very problematic to access via the REPL for
+  ;; examining and debugging.
+  ;; And, really, the problem with globals is mutating them.
+  ;; Since this really does involve mutable state, I'm squeamish
+  ;; about handling it this way.
+  ;; For now, run with it.
+  ;; TODO: Keep an eye out for better alternatives
+  (reset! global/app-state system/ctor)
+
+  ;;; TODO: Move this to the initial world/localhost's ctor
+  ;;; Except that it needs to be more generalized. Could also
+  ;;; be contacting other servers directly via their clients to
+  ;;; avoid needless network hops
   (log/debug "Initializing contact w/ outside world")
   (go
     (let [{:keys [pending-server-handshake]
@@ -152,7 +158,11 @@ Right now, that isn't the case at all."
       (let [channel-creation-result (<! pending-server-handshake)]
         (log/debug "Server fresh connection request returned:\n"
                    (pr-str channel-creation-result))))
-    (log/info "-main: Connected to outside world")))
+    (log/info "-main: Connected to outside world"))
+
+  (swap! global/app-state component/start)
+  ;; Q: Should I ever plan on stopping it?
+  )
 ;; Because I'm not sure how to trigger this on a page reload
 ;; (there's a built-in figwheel method precisely for this)
 ;; Really just for scaffolding: I won't want to do this after I'm

@@ -5,7 +5,7 @@
             [cljs-uuid-utils.core :as uuid]
             [frereth.globals :as global]
             [frereth.schema :as fr-skm]
-            [frereth.world :as world]
+            #_[frereth.world :as world]
             [om.core :as om]
             [ribol.cljs :refer [create-issue
                                 *managers*
