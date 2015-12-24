@@ -90,14 +90,14 @@
                  [com.taoensso/sente "1.7.0-RC1" :exclusions [com.taoensso/timbre
                                                               org.clojure/clojure
                                                               org.clojure/tools.reader]]
-                 [figwheel "0.4.1" :exclusions [cider/cider-nrepl
+                 [figwheel "0.5.0-1" :exclusions [cider/cider-nrepl
                                                 org.clojure/clojure
                                                 org.clojure/clojurescript]]
                  ;; Definitely shouldn't need this, since figwheel already depends on it
-                 [figwheel-sidecar "0.4.1" :exclusions [cider/cider-nrepl
-                                                        org.clojure/clojure
-                                                        org.clojure/clojurescript
-                                                        org.clojure/java.classpath]]
+                 [figwheel-sidecar "0.5.0-1" :exclusions [cider/cider-nrepl
+                                                          org.clojure/clojure
+                                                          org.clojure/clojurescript
+                                                          org.clojure/java.classpath]]
                  [org.clojure/core.match "0.3.0-alpha4" :exclusions [org.clojure/clojure]]]
   :description "Another waffle in my indecision about making this web-based"
 
@@ -142,22 +142,19 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main ^:skip-aot com.frereth.web.core
 
-  :plugins [[cider/cider-nrepl "0.9.1"] ; shouldn't need to do this. No idea what's pulling in 0.8.2.
+  :plugins [#_[cider/cider-nrepl "0.9.1"] ; shouldn't need to do this. No idea what's pulling in 0.8.2.
             [com.jakemccrary/lein-test-refresh "0.9.0"]
             [lein-cljsbuild "1.0.6" :exclusions [org.clojure/clojure]]
-            [lein-figwheel "0.3.5" :exclusions [org.codehaus.plexus/plexus-utils
-                                                org.clojure/clojure]]]
+            [lein-figwheel "0.5.0-1" :exclusions [org.codehaus.plexus/plexus-utils
+                                                  org.clojure/clojure]]]
 
   :profiles {:dev-base {:immutant {:context-path "/frereth"
                                    :nrepl-port 4242
                                    :lein-profiles [:dev]
                                    :env :dev}
-                        :plugins [#_[lein-figwheel "0.3.3" :exclusions [org.clojure/clojurescript
-                                                                        org.codehaus.plexus/plexus-utils]]
-                                  #_[com.jakemccrary/lein-test-refresh "0.9.0"]]
                         :resource-paths ["dev-resources"]
                         :source-paths ["dev"]}
-             :figwheel {:dependencies [#_[figwheel "0.3.3"]]
+             :figwheel {:dependencies []
                         :figwheel {:css-dirs ["resources/public/css"]
                                    :resource-paths ["target/js"]}}
              ;; Q: Why isn't this working?
