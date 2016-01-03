@@ -95,6 +95,7 @@ extra-files: seq of absolute file paths to merge in. For
 
   ;; This is where the real action starts these days
   (let [constructors '{:complete com.frereth.web.completion/ctor
+                       :figwheel com.frereth.web.figwheel/ctor  ; TODO: Only in dev profiles
                        ;; Poor name. This is really the frereth-client.
                        ;; Or maybe the frereth-server-connection.
                        ;; TODO: Either way, pick a better one.

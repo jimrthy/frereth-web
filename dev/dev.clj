@@ -18,7 +18,7 @@
             [component-dsl.system :as cpt-dsl]  ; Q: Will I really be using this often?
             #_[figwheel-sidecar.auto-builder :as fig-auto]
             #_[figwheel-sidecar.core :as fig]
-            [figwheel-sidecar.repl-api :as repl-api]
+            #_[figwheel-sidecar.repl-api :as repl-api]
             [ribol.core :refer (raise)]
             [schema.core :as s]
             [taoensso.timbre :as log]))
