@@ -9,13 +9,15 @@
             [clojure.repl :refer :all]
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer (refresh refresh-all)]
+            ;; Q: What should my figwheel interface look like here?
+            ;; FIXME: Start here
             [clojurescript-build.auto :as auto]
             #_[com.frereth.common.util :as util]
             [com.frereth.web.system :as system]
             [com.stuartsierra.component :as component]
             [component-dsl.system :as cpt-dsl]  ; Q: Will I really be using this often?
-            [figwheel-sidecar.auto-builder :as fig-auto]
-            [figwheel-sidecar.core :as fig]
+            #_[figwheel-sidecar.auto-builder :as fig-auto]
+            #_[figwheel-sidecar.core :as fig]
             [figwheel-sidecar.repl-api :as repl-api]
             [ribol.core :refer (raise)]
             [schema.core :as s]
@@ -129,7 +131,7 @@ TODO: switch to it"
   "Use figwheel from a Clojure REPL
   It's a work in progress"
   []
-  (let [config {:builds [{:id "example"
+  (let [config {:builds [{:id "dev"
                           :output-to "resources/public/checkbuild.js"
                           :output-dir "resources/public/out"
                           :optimizations :none}]
@@ -138,3 +140,4 @@ TODO: switch to it"
     (defn stop-figwheel
       []
       (auto/stop-autobuild! builder)))))
+
