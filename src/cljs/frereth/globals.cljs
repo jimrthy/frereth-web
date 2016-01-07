@@ -1,5 +1,6 @@
 (ns ^:figwheel-load frereth.globals
-    (:require [frereth.schema :as fr-skm]
+    (:require [frereth.repl :as repl]
+              [frereth.schema :as fr-skm]
               [ribol.cljs :refer [create-issue
                                   *managers*
                                   *optmap*
@@ -69,7 +70,7 @@ app-state atom"
   [world-key]
   (-> app-state deref :worlds (get world-key) :state))
 
-(s/defn get-world-repl :- repl-state
+(s/defn get-world-repl :- repl/repl-state
   [world-key :- fr-skm/world-id]
   (-> app-state deref :worlds (get world-key) :repl))
 

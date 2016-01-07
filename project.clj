@@ -2,53 +2,52 @@
   :clean-targets ^{:protect false} ["resources/public/js/compiled" "target"]
 
   :cljsbuild {
-    :builds [{:id "dev"
-                        :figwheel {;; Optional callback
-                                   ;; :on-jsreload "frereth.core/figwheel-reload"
-                                   
-                                   ;; Q: Is there a good way to make this just match my current IP?
-                                   ;; A: Well, localhost would be a great choice, if that's where
-                                   ;; I were actually running the browser.
-                                   ;; Maybe it would be worth setting up DNS?
-                                   :websocket-host #_"10.0.3.12" :js-client-host}
-                        :source-paths ["src/cljs" "dev_src/cljs"]
-                        ;; Different output targets should go to different paths
-                        ;; Should probably have a different index.?.html based on build
-                        ;; profile.
-                        ;; Then the route middleware that returns the index could return
-                        ;; the one based on build profile (assuming that info's available
-                        ;; at run-time)
-                        :compiler {:output-to "resources/public/js/compiled/frereth.js"
-                                   :output-dir "resources/public/js/compiled"
-                                   :optimizations :none
-                                   :main frereth.core   ; Q: Huh?
-                                   ;;:main frereth.core
-                                   :asset-path "js/compiled"
-                                   ;;:source-map "resources/public/js/compiled/frereth.js.map"
-                                   :source-map true
-                                   :source-map-timestamp true
-                                   :verbose true
-                                   ;;:cache-analysis true
-                                   }}
+              :builds {:dev {
+                             ;; Q: Does this belong here at all?
+                             :figwheel {;; Optional callback
+                                        ;; :on-jsreload "frereth.core/figwheel-reload"
+
+                                        ;; Q: Is there a good way to make this just match my current IP?
+                                        ;; A: Well, localhost would be a great choice, if that's where
+                                        ;; I were actually running the browser.
+                                        ;; Maybe it would be worth setting up DNS?
+                                        :websocket-host #_"10.0.3.12" :js-client-host}
+                             :source-paths ["src/cljs" "dev_src/cljs"]
+                             ;; Different output targets should go to different paths
+                             ;; Should probably have a different index.?.html based on build
+                             ;; profile.
+                             ;; Then the route middleware that returns the index could return
+                             ;; the one based on build profile (assuming that info's available
+                             ;; at run-time)
+                             :compiler {:output-to "resources/public/js/compiled/frereth.js"
+                                        :output-dir "resources/public/js/compiled"
+                                        :optimizations :none
+                                        :main frereth.core   ; Q: Huh?
+                                        :asset-path "js/compiled"
+                                        ;;:source-map "resources/public/js/compiled/frereth.js.map"
+                                        :source-map true
+                                        :source-map-timestamp true
+                                        :verbose true
+                                        ;;:cache-analysis true
+                                        }}
                        ;; TODO: Compare the output size of this vs. standard
                        ;; minification
-                       #_{:id "min"
-                          :source-paths ["src"]
-                          :compiler {:output-to "resources/public/js/compiled/frereth.js"
-                                     :main frereth.core
-                                     ;; TODO: Advanced compilation has gone away
-                                     ;; Actually, the entire google.clojure compiler has gone away
-                                     ;; Q: Why am I getting errors from that?
-                                     :optimizations :advanced
-                                     :pretty-print false}}]}
+                       :min {:source-paths ["src/cljs" "dev_src/cljs"]
+                             :compiler {:output-to "resources/public/js/compiled/frereth.js"
+                                        :main frereth.core
+                                        ;; TODO: Advanced compilation has gone away
+                                        ;; Actually, the entire google.clojure compiler has gone away
+                                        ;; Q: Why am I getting errors from that?
+                                        :optimizations :advanced
+                                        :pretty-print false}}}}
 
   :dependencies [[org.clojure/clojure "1.8.0-RC4"] ; really should just inherit this from frereth-common
 
                  ;;; Libraries that are probably only useful server-side
-                 [com.cognitect/transit-clj "0.8.283"]
+                 [com.cognitect/transit-clj "0.8.285" :exclusions [com.fasterxml.jackson.core/jackson-core]] ; the cljs lib is totally different
                  ;; TODO: How many of these exclusions are still needed?
                  ;; And do more get added w/ this version bump?
-                 [org.immutant/immutant "2.1.0" :exclusions [clj-tuple
+                 [org.immutant/immutant "2.1.1" :exclusions [clj-tuple
                                                              org.clojure/clojure
                                                              org.clojure/java.classpath
                                                              org.clojure/tools.reader
@@ -59,15 +58,17 @@
                                                              org.hornetq/hornetq-server
                                                              org.jboss.logging/jboss-logging
                                                              org.jgroups/jgroups
-                                                             org.slf4j/slf4j-api
+                                                             ;org.slf4j/slf4j-api
                                                              riddley]]
                  ;; immutant is schizophrenic about which version it uses
-                 [org.slf4j/slf4j-api "1.7.6"]  ; TODO: Try bumping to 12
+                 #_[org.slf4j/slf4j-api "1.7.6"]  ; TODO: Try bumping to 12
                  ;; and about this
-                 #_[org.jboss.logging/jboss-logging "3.2.1.Final"]
-                 [org.jboss.logging/jboss-logging "3.1.4.GA"]
+                 #_[org.jboss.logging/jboss-logging "3.3.0.Final"]
+                 [org.jboss.logging/jboss-logging "3.2.1.Final"]
+                 ;; May still need to fall back on
+                 #_[org.jboss.logging/jboss-logging "3.1.4.GA"]
 
-                 [prismatic/fnhouse "0.2.1" :exclusions [prismatic/plumbing]]
+                 [prismatic/fnhouse "0.2.1" :exclusions [prismatic/plumbing prismatic/schema]]
                  [ring/ring-core "1.4.0" :exclusions [commons-codec
                                                           joda-time
                                                           org.clojure/clojure
@@ -75,47 +76,48 @@
                  [ring/ring-anti-forgery "1.0.0" :exclusions [org.clojure/clojure]]
                  [ring/ring-defaults "0.1.5" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
+                 [ring/ring-devel "1.4.0"]  ; for stacktrace
                  [ring/ring-headers "0.1.3" :exclusions [org.clojure/clojure]]
-                 [ring-middleware-format "0.6.0" :exclusions [org.clojure/clojure
+                 [ring-middleware-format "0.7.0" :exclusions [org.clojure/clojure
+                                                              org.clojure/core.memoize
                                                               org.clojure/tools.reader]]
 
                  ;;; Client-Specific...more or less
-                 [cljsjs/three "0.0.70-0"]
+                 [cljsjs/three "0.0.72-0"]
                  ;; I'm fairly certain that I want this, though it's YAGNI
                  ;; at the moment.
                  ;; And something like pixi might be much nicer.
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
-                 [com.cognitect/transit-cljs "0.8.225"]
+                 [com.cognitect/transit-cljs "0.8.237"]
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
-                 [org.clojure/clojurescript "1.7.170" :exclusions [org.clojure/clojure
+                 [org.clojure/clojurescript "1.7.189" :exclusions [org.clojure/clojure
                                                                    org.clojure/tools.reader]]
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
-                 [sablono "0.3.6"]
+                 [sablono "0.5.3"]
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
                                                  org.clojure/clojurescript]]
 
                  ;;; Generally Useful
                  ;; Really should inherit my clojure version from this.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
-                 [com.taoensso/sente "1.7.0-RC1" :exclusions [com.taoensso/timbre
-                                                              org.clojure/clojure
-                                                              org.clojure/tools.reader]]
-                 ;; This is a plugin, not a straight dependency
-                 #_[figwheel "0.5.0-2" :exclusions [cider/cider-nrepl
-                                                    org.clojure/clojure
-                                                    org.clojure/clojurescript]]
-                 ;; It seems like I shouldn't need this, since figwheel depends on it.
-                 ;; But this is a dependency that I'll be using at runtime to build
+                 [com.taoensso/sente "1.7.0" :exclusions [com.taoensso/encore
+                                                          com.taoensso/timbre
+                                                          org.clojure/clojure
+                                                          org.clojure/tools.reader]]
+                 ;; This is a dependency that I'll be using at runtime to build
                  ;; the system that actually loads figwheel.
                  ;; Whereas figwheel is a plugin.
                  ;; I don't pretend to have a solid grasp on the distinction, but it's
                  ;; obviously an important one.
                  [figwheel-sidecar "0.5.0-2" :exclusions [cider/cider-nrepl
+                                                          com.stuartsierra/component
+                                                          medley
                                                           org.clojure/clojure
                                                           org.clojure/clojurescript
                                                           org.clojure/java.classpath]]
-                 [org.clojure/core.match "0.3.0-alpha4" :exclusions [org.clojure/clojure]]]
+                 [org.clojure/core.match "0.3.0-alpha4" :exclusions [org.clojure/clojure
+                                                                     org.clojure/tools.analyzer.jvm]]]
   :description "Another waffle in my indecision about making this web-based"
 
   :figwheel {
@@ -165,8 +167,15 @@
 
   :plugins [[com.jakemccrary/lein-test-refresh "0.9.0"]
             [lein-cljsbuild "1.1.2" :exclusions [org.clojure/clojure]]
-            [lein-figwheel "0.5.0-2" :exclusions [org.codehaus.plexus/plexus-utils
-                                                  org.clojure/clojure]]]
+            ;; This is schizophrenic and conflicts with itself too
+            ;; Specifically commons-fileupload and ring/ring-core
+            ;; TODO: Keep an eye on those dependencies (esp) to see if I can get rid of
+            ;; the ones that I really don't actually want
+            [lein-figwheel "0.5.0-2" :exclusions [commons-fileupload  ; TODO: I probably need to include this myself now
+                                                  org.codehaus.plexus/plexus-utils
+                                                  org.clojure/clojure
+                                                  org.clojure/tools.reader
+                                                  ring/ring-core]]]
 
   :profiles {:dev-base {:immutant {:context-path "/frereth"
                                    :nrepl-port 4242

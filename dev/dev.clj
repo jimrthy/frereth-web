@@ -9,16 +9,11 @@
             [clojure.repl :refer :all]
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer (refresh refresh-all)]
-            ;; Q: What should my figwheel interface look like here?
-            ;; FIXME: Start here
-            [clojurescript-build.auto :as auto]
             #_[com.frereth.common.util :as util]
             [com.frereth.web.system :as system]
             [com.stuartsierra.component :as component]
             [component-dsl.system :as cpt-dsl]  ; Q: Will I really be using this often?
-            #_[figwheel-sidecar.auto-builder :as fig-auto]
-            #_[figwheel-sidecar.core :as fig]
-            #_[figwheel-sidecar.repl-api :as repl-api]
+            [figwheel-sidecar.repl-api :as repl-api]
             [ribol.core :refer (raise)]
             [schema.core :as s]
             [taoensso.timbre :as log]))
@@ -141,3 +136,26 @@ TODO: switch to it"
       []
       (auto/stop-autobuild! builder)))))
 
+(defn start-figwheel
+  []
+  ;; We could pass this to the real start-figwheel!
+  ;; But the version without parameter does its best to pull it
+  ;; from the project.clj which is what I really want anyway
+  (comment (let [figwheel-config {:figwheel-options {} ; server config goes here
+                                  :build-ids ["dev"]
+                                  :all-builds ; my build configs go here
+                                  [{:id "dev"
+                                    :figwheel true
+                                    :source-paths ["src/cljs" "dev_src/cljs"]
+                                    :compiler {:main "frereth.core"
+                                               :asset-path "js/compiled"
+                                               :output-to "resources/public/js/compiled/frereth.js"
+                                               ;; The figwheel README puts this one more layer down
+                                               ;; Q: Why?
+                                               :output-dir "resources/public/js/compiled"
+                                               :verbose true}}]}]))
+  (repl-api/start-figwheel!)
+  ;; And then switch to that REPL
+  ;; Not that this is likely to work w/ nrepl
+  ;; Right this second, I'm really just trying to get things to build again
+  (repl-api/cljs-repl))

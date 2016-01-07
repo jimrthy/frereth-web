@@ -7,7 +7,7 @@
 ;;; Schema
 
 (defrecord Figwheel []
-  component/Lifecycle
+  cpt/Lifecycle
   (start [config]
     (repl-api/start-figwheel! config)
     config)
