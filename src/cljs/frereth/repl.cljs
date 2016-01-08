@@ -10,6 +10,7 @@
             [frereth.schema :as fr-skm]
             [om.core :as om]
             [om.dom :as dom]
+            [schema.core :as s]
             [taoensso.timbre :as log]))
 
 (enable-console-print!)

@@ -94,6 +94,8 @@
                  [org.clojure/clojurescript "1.7.189" :exclusions [org.clojure/clojure
                                                                    org.clojure/tools.reader]]
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
+                 [cljsjs/react-dom "0.14.3-1"]
+                 [cljsjs/react-dom-server "0.14.3-0"]
                  [sablono "0.5.3"]
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
                                                  org.clojure/clojurescript]]
