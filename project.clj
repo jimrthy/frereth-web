@@ -91,9 +91,15 @@
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
                  [com.cognitect/transit-cljs "0.8.237"]
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
+                 ;; I'm getting a warning about no clojurescript dependency.
+                 ;; Q: What did I mess up?
                  [org.clojure/clojurescript "1.7.189" :exclusions [org.clojure/clojure
                                                                    org.clojure/tools.reader]]
-                 [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
+
+                 [org.omcljs/om "0.9.0" :exclusions [cljsjs/react
+                                                     org.clojure/clojure]]
+                 ;; These should be pulled in by Om's dependency on cljsjs/react
+                 ;; Q: Why doesn't sablono see them?
                  [cljsjs/react-dom "0.14.3-1"]
                  [cljsjs/react-dom-server "0.14.3-0"]
                  [sablono "0.5.3"]
@@ -122,8 +128,7 @@
                                                                      org.clojure/tools.analyzer.jvm]]]
   :description "Another waffle in my indecision about making this web-based"
 
-  :figwheel {
-             :css-dirs ["resources/public/css"] ;; watch and update CSS
+  :figwheel {:css-dirs ["resources/public/css"] ;; watch and update CSS
 
              :http-server-root "public" ;; default and assumes "resources"
 
@@ -160,7 +165,7 @@
   :immutant {:init "frereth-web.core/-main"}
 
   ;; This was really for access to jzmq
-  ;; Q: Does it serve any point now?
+  ;; Q: Does it serve any point if I'm not using that?
   :jvm-opts [~(str "-Djava.library.path=/usr/local/lib:" (System/getenv "LD_LIBRARY_PATH"))]
 
   :license {:name "Eclipse Public License"

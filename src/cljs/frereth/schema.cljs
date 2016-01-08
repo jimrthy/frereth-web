@@ -2,7 +2,10 @@
   "For schema that's shared pretty much everywhere, to avoid circular imports
 
 TODO: Honestly, these pieces probably belong in frereth.common in a .cljc"
-  (:require [schema.core :as s :include-macros true]))
+  (:require [schema.core :as s])
+  ;; I don't think I'm using any here, but where are they hidden?
+  ;;#_(:require-macros [])
+  )
 
 (def compiler-black-box
   "Doesn't really belong in here, but it'll do as a start"
