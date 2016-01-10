@@ -50,7 +50,7 @@ TODO: Move to a Component in common"
 
 ;;;; This is a mess
 ;;;; TODO: Clean up the old left-overs
-(s/defn ctor :- SystemMap
+(s/defn ^:always-validate ctor :- SystemMap
   "Returns a system that's ready to start, based on config
 files.
 
@@ -74,40 +74,18 @@ command-line-args is really meant to be a seq of
 extra-files: seq of absolute file paths to merge in. For
   the sake of setting up configuration outside the CLASSPATH
 "
-  [command-line-args
-   config-file-name :- s/Str]
-
-  ;; Q: Do I want to go back to something more similar to this
-  ;; original, commented-out version?
-  ;; (i.e. where I load the EDN description from a file instead
-  ;; of hard-coding it here)
-  (comment
-    (let [system-description (-> system-description-file-name
-                                 io/resource
-                                 io/reader
-                                 util/pushback-reader
-                                 edn/read)
-          options (combine-options command-line-args system-description)
-          pre-init (-> system-description
-                       :initialization-map
-                       (cpt-dsl/system-map options))]
-      (cpt-dsl/dependencies pre-init (:dependencies system-description))))
-
-  ;; This is where the real action starts these days
+  []
   (let [constructors '{:complete com.frereth.web.completion/ctor
                        ;; Realistically, I need separate system.clj versions for separate profiles.
                        :figwheel com.frereth.web.figwheel/ctor  ; TODO: Only in dev profiles
-                       ;; Poor name. This is really the frereth-client.
-                       ;; Or maybe the frereth-server-connection.
-                       ;; TODO: Either way, pick a better one.
-                       :frereth-server com.frereth.client.system/init
+                       :server-connection com.frereth.client.system/init
                        :http-router com.frereth.web.routes.core/ctor
                        :web-sock-handler com.frereth.web.routes.websock/ctor
                        :web-server com.frereth.web.handler/ctor}
-        dependencies  {:http-router [:frereth-server :web-sock-handler]
+        dependencies  {:http-router [:server-connection :web-sock-handler]
                        :web-server [:http-router]
-                       :web-sock-handler [:frereth-server]
-                       :frereth-server [:complete]}]
+                       :web-sock-handler [:server-connection]
+                       :server-connection [:complete]}]
     (cpt-dsl/build {:structure constructors
                     :dependencies dependencies}
                    {})))

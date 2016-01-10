@@ -58,7 +58,7 @@
                   ;; Honestly, that approach is wrong.
                   ;; Need to have different systems for different
                   ;; profiles.
-                  (constantly (system/ctor nil nil))))
+                  (constantly (system/ctor))))
 
 (defn start
   "Starts the current development system."
