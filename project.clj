@@ -118,7 +118,8 @@
                  ;; Whereas figwheel is a plugin.
                  ;; I don't pretend to have a solid grasp on the distinction, but it's
                  ;; obviously an important one.
-                 [figwheel-sidecar "0.5.0-2" :exclusions [cider/cider-nrepl
+                 ;; Hopefully this has been successfully been moved to the dev dependency
+                 #_[figwheel-sidecar "0.5.0-2" :exclusions [cider/cider-nrepl
                                                           com.stuartsierra/component
                                                           medley
                                                           org.clojure/clojure
@@ -197,7 +198,22 @@
                         :figwheel {:css-dirs ["resources/public/css"]
                                    :resource-paths ["target/js"]}}
              ;; Q: Why isn't this working?
-             :dev [:dev-base :figwheel]}
+             ;:dev-I-want [:dev-base :figwheel]
+             ;; For now, just do this by hand
+             :dev {:dependencies [[com.cemerick/piggieback "0.2.1"]
+                                  [figwheel-sidecar "0.5.0-2" :exclusions [cider/cider-nrepl
+                                                                           com.stuartsierra/component
+                                                                           medley
+                                                                           org.clojure/clojure
+                                                                           org.clojure/clojurescript
+                                                                           org.clojure/java.classpath]]]
+                   :immutant {:context-path "/frereth"
+                                   :nrepl-port 4242
+                                   :lein-profiles [:dev]
+                                   :env :dev}
+                   :repl-options {:nrepl-middleware [cemerick.piggieback/wrap-cljs-repl]}
+                   :resource-paths ["dev-resources"]
+                   :source-paths ["dev" "src/cljs" "dev_src/cljs"]}}
   :repl-options {:init-ns user
                  :timeout 120000
                  :welcome (println "Run (dev) then (reset) to begin")}

@@ -53,6 +53,11 @@
   ;; Well, besides for the things that will obviously change, like
   ;; URLs and passwords
   (alter-var-root #'system
+                  ;; It's tempting to have this not return figwheel,
+                  ;; then add it here.
+                  ;; Honestly, that approach is wrong.
+                  ;; Need to have different systems for different
+                  ;; profiles.
                   (constantly (system/ctor nil nil))))
 
 (defn start
@@ -138,6 +143,7 @@ TODO: switch to it"
 
 (defn start-figwheel
   []
+  (throw (ex-info "Obsolete" {:pointless "Just run repl-api/cljs-repl directly"}))
   ;; We could pass this to the real start-figwheel!
   ;; But the version without parameter does its best to pull it
   ;; from the project.clj which is what I really want anyway
@@ -154,6 +160,7 @@ TODO: switch to it"
                                                ;; Q: Why?
                                                :output-dir "resources/public/js/compiled"
                                                :verbose true}}]}]))
+  ;; Note that the figwheel component actually does this part
   (repl-api/start-figwheel!)
   ;; And then switch to that REPL
   ;; Not that this is likely to work w/ nrepl
