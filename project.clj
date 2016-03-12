@@ -59,9 +59,9 @@
                                                              org.slf4j/slf4j-api
                                                              riddley]]
                  ;; immutant is schizophrenic about which version it uses
-                 [org.slf4j/slf4j-api "1.7.6"]  ; TODO: Try bumping to 12
+                 [org.slf4j/slf4j-api "1.7.6"]  ; TODO: Try bumping to 18
                  ;; and about this
-                 #_[org.jboss.logging/jboss-logging "3.2.1.Final"]
+                 #_[org.jboss.logging/jboss-logging "3.3.0.Final"]
                  [org.jboss.logging/jboss-logging "3.1.4.GA"]
 
                  [prismatic/fnhouse "0.2.1" :exclusions [prismatic/plumbing]]
@@ -70,39 +70,38 @@
                                                           org.clojure/clojure
                                                           org.clojure/tools.reader]]
                  [ring/ring-anti-forgery "1.0.0" :exclusions [org.clojure/clojure]]
-                 [ring/ring-defaults "0.1.5" :exclusions [org.clojure/clojure
+                 [ring/ring-defaults "0.2.0" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
-                 [ring/ring-headers "0.1.3" :exclusions [org.clojure/clojure]]
-                 [ring-middleware-format "0.6.0" :exclusions [org.clojure/clojure
+                 [ring/ring-headers "0.2.0" :exclusions [org.clojure/clojure]]
+                 [ring-middleware-format "0.7.0" :exclusions [org.clojure/clojure
                                                               org.clojure/tools.reader]]
 
-                 ;;; Client-Specific...more or less
-                 [cljsjs/three "0.0.70-0"]
+                 ;;; Client-Specific
+                 [cljsjs/three "0.0.72-0"]
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
-                 [com.cognitect/transit-cljs "0.8.225"]
+                 [com.cognitect/transit-cljs "0.8.237"]
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
                  [org.clojure/clojurescript "1.7.170" :exclusions [org.clojure/clojure
                                                                    org.clojure/tools.reader]]
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
-                 [sablono "0.3.6"]
+                 [sablono "0.6.2"]
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
                                                  org.clojure/clojurescript]]
 
                  ;;; Generally Useful
                  ;; Really should inherit my clojure version from this.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
-                 [com.taoensso/sente "1.7.0-RC1" :exclusions [com.taoensso/timbre
+                 [com.taoensso/sente "1.8.1" :exclusions [com.taoensso/timbre
                                                               org.clojure/clojure
                                                               org.clojure/tools.reader]]
-                 [figwheel "0.4.1" :exclusions [cider/cider-nrepl
-                                                org.clojure/clojure
-                                                org.clojure/clojurescript]]
-                 ;; Definitely shouldn't need this, since figwheel already depends on it
-                 [figwheel-sidecar "0.4.1" :exclusions [cider/cider-nrepl
-                                                        org.clojure/clojure
-                                                        org.clojure/clojurescript
-                                                        org.clojure/java.classpath]]
+                 [figwheel "0.5.0-6" :exclusions [cider/cider-nrepl
+                                                  org.clojure/clojure
+                                                  org.clojure/clojurescript]]
+                 [figwheel-sidecar "0.5.0-6" :exclusions [cider/cider-nrepl
+                                                          org.clojure/clojure
+                                                          org.clojure/clojurescript
+                                                          org.clojure/java.classpath]]
                  [org.clojure/core.match "0.3.0-alpha4" :exclusions [org.clojure/clojure]]]
   :description "Another waffle in my indecision about making this web-based"
 
@@ -153,7 +152,8 @@
             [lein-figwheel "0.3.5" :exclusions [org.codehaus.plexus/plexus-utils
                                                 org.clojure/clojure]]]
 
-  :profiles {:dev-base {:immutant {:context-path "/frereth"
+  :profiles {:dev-base {:dependencies [[binaryage/devtools "0.5.2"]]
+                        :immutant {:context-path "/frereth"
                                    :nrepl-port 4242
                                    :lein-profiles [:dev]
                                    :env :dev}
