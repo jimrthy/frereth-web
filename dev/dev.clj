@@ -13,14 +13,10 @@
             [com.frereth.web.system :as system]
             [com.stuartsierra.component :as component]
             [component-dsl.system :as cpt-dsl]  ; Q: Will I really be using this often?
-            [devtools.core :as devtools]
             [figwheel-sidecar.repl-api :as repl-api]
             [ribol.core :refer (raise)]
             [schema.core :as s]
             [taoensso.timbre :as log]))
-
-(devtools/enable-feature! :sanity-hints :dirac)
-(devtools/install!)
 
 ;; We wrap the system in a system wrapper so that we can define a
 ;; print-method that will avoid recursion.

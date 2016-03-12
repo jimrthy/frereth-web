@@ -1,5 +1,6 @@
 (ns frereth.dev
     (:require
+     [devtools.core :as devtools]
      [frereth.core]
      [frereth.globals :as global]
      [frereth.system :as system]
@@ -10,6 +11,9 @@
 (defn init
   "Constructs the current development system."
   []
+  (devtools/enable-feature! :sanity-hints :dirac)
+  (devtools/install!)
+
   (set! *print-length* 50)
   ;; Q: Will there ever be any valid reason to use a different
   ;; system descriptor for dev than prod?
