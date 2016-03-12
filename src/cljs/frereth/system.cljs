@@ -1,10 +1,9 @@
 (ns frereth.system
-  "Foundation of the Stuart Sierra Reloaded/Component framework
+  "Foundation based on the Stuart Sierra Reloaded/Component framework
 
 Or maybe the ligaments. This is where all the boot-time Components
 get declared and wired together"
-  (:require [clojure.lang :refer (ExceptionInfo)]
- [com.stuartsierra.component :refer (SystemMap)]
+  (:require [com.stuartsierra.component :refer (SystemMap)]
             [component-dsl.system :as cpt-dsl]
             [schema.core :as s]))
 

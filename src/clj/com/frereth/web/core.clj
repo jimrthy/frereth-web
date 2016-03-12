@@ -10,13 +10,9 @@
 (defn -main
   "This is where immutant will kick off"
   [& args]
-  (let [initial (sys/ctor args "frereth.system.edn")
+  (let [initial (sys/ctor)
         system (component/start initial)]
-    ;; TODO: The name here really needs to come from system's
-    ;; "combine-options".
-    ;; I'm just having a tough time figuring out how to make that
-    ;; play nicely with the REPL
-    (daemons/singleton-daemon "FIXME: Needs to come from env"
+    (daemons/singleton-daemon "Frereth"
                               (constantly nil)
                               (fn []
                                 (component/stop system)))))

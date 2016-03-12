@@ -9,14 +9,11 @@
             [clojure.repl :refer :all]
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer (refresh refresh-all)]
-            [clojurescript-build.auto :as auto]
             #_[com.frereth.common.util :as util]
             [com.frereth.web.system :as system]
             [com.stuartsierra.component :as component]
             [component-dsl.system :as cpt-dsl]  ; Q: Will I really be using this often?
             [devtools.core :as devtools]
-            [figwheel-sidecar.auto-builder :as fig-auto]
-            [figwheel-sidecar.core :as fig]
             [figwheel-sidecar.repl-api :as repl-api]
             [ribol.core :refer (raise)]
             [schema.core :as s]
@@ -60,7 +57,12 @@
   ;; Well, besides for the things that will obviously change, like
   ;; URLs and passwords
   (alter-var-root #'system
-                  (constantly (system/ctor nil nil))))
+                  ;; It's tempting to have this not return figwheel,
+                  ;; then add it here.
+                  ;; Honestly, that approach is wrong.
+                  ;; Need to have different systems for different
+                  ;; profiles.
+                  (constantly (system/ctor))))
 
 (defn start
   "Starts the current development system."
@@ -133,7 +135,7 @@ TODO: switch to it"
   "Use figwheel from a Clojure REPL
   It's a work in progress"
   []
-  (let [config {:builds [{:id "example"
+  (let [config {:builds [{:id "dev"
                           :output-to "resources/public/checkbuild.js"
                           :output-dir "resources/public/out"
                           :optimizations :none}]
@@ -142,3 +144,29 @@ TODO: switch to it"
     (defn stop-figwheel
       []
       (auto/stop-autobuild! builder)))))
+
+(defn start-figwheel
+  []
+  (throw (ex-info "Obsolete" {:pointless "Just run repl-api/cljs-repl directly"}))
+  ;; We could pass this to the real start-figwheel!
+  ;; But the version without parameter does its best to pull it
+  ;; from the project.clj which is what I really want anyway
+  (comment (let [figwheel-config {:figwheel-options {} ; server config goes here
+                                  :build-ids ["dev"]
+                                  :all-builds ; my build configs go here
+                                  [{:id "dev"
+                                    :figwheel true
+                                    :source-paths ["src/cljs" "dev_src/cljs"]
+                                    :compiler {:main "frereth.core"
+                                               :asset-path "js/compiled"
+                                               :output-to "resources/public/js/compiled/frereth.js"
+                                               ;; The figwheel README puts this one more layer down
+                                               ;; Q: Why?
+                                               :output-dir "resources/public/js/compiled"
+                                               :verbose true}}]}]))
+  ;; Note that the figwheel component actually does this part
+  (repl-api/start-figwheel!)
+  ;; And then switch to that REPL
+  ;; Not that this is likely to work w/ nrepl
+  ;; Right this second, I'm really just trying to get things to build again
+  (repl-api/cljs-repl))
