@@ -35,8 +35,12 @@
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [[org.clojure/clojure "1.9.0-alpha5"] ; absolutely should not need this
+  :dependencies [[org.clojure/clojure "1.9.0-alpha5"]
+
                  ;; Probably only useful server-side
+                 [com.cognitect/transit-clj "0.8.285" :exclusions [com.fasterxml.jackson.core/jackson-core]]
+                 ;; TODO: How many of these exclusions are still needed?
+                 ;; And do more get added w/ this version bump?
                  [org.immutant/immutant "2.1.4" :exclusions [clj-tuple
                                                              org.clojure/clojure
                                                              org.clojure/java.classpath
@@ -46,49 +50,71 @@
                                                              org.hornetq/hornetq-journal
                                                              org.hornetq/hornetq-native
                                                              org.hornetq/hornetq-server
+                                                             org.jboss.logging/jboss-logging
                                                              org.jgroups/jgroups
-                                                             ;;org.slf4j/slf4j-api
                                                              riddley]]
-                 ;; immutant is schizophrenic about which version it uses
-                 ;;[org.slf4j/slf4j-api "1.7.6"]  ; TODO: Try bumping to 12
-                 [prismatic/fnhouse "0.2.1" :exclusions [prismatic/plumbing]]
+                 ;; Q: Do I still need this?
+                 ;; (it's up to 3.3.0.Final...how far can I successfully push it?)
+                 ;; Some parts of it depend on this version, others on 3.2.1.GA
+                 [org.jboss.logging/jboss-logging "3.1.4.GA"]
+                 [prismatic/fnhouse "0.2.1" :exclusions [prismatic/plumbing
+                                                         prismatic/schema]]
                  [ring/ring-core "1.5.0" :exclusions [commons-codec
                                                           joda-time
                                                           org.clojure/clojure
                                                           org.clojure/tools.reader]]
                  [ring/ring-anti-forgery "1.0.1" :exclusions [org.clojure/clojure]]
-                 [ring/ring-defaults "0.2,1" :exclusions [org.clojure/clojure
+                 [ring/ring-defaults "0.2.1" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
                  [ring/ring-headers "0.2.0" :exclusions [org.clojure/clojure]]
-                 [ring-middleware-format "0.7.0" :exclusions [org.clojure/clojure
+                 [ring-middleware-format "0.7.0" :exclusions [com.cognitect/transit-clj
+                                                              org.clojure/clojure
+                                                              org.clojure/core.memoize
                                                               org.clojure/tools.reader]]
 
                  ;;; Client-Specific...more or less
                  [cljsjs/three "0.0.76-0"]
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
+                 [com.cognitect/transit-cljs "0.8.237"]
+                 ;; Q: Is there any remaining use for this?
+                 [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
                  [org.clojure/clojurescript "1.9.76" :exclusions [org.clojure/clojure
-                                                                        org.clojure/tools.reader]]
+                                                                  org.clojure/tools.reader]]
+                 ;; TODO: This needs to go away.
+                 ;; It's up to the individual Apps.
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
+                 ;; TODO: This needs to go away.
+                 ;; It's up to the individual Apps.
+                 [sablono "0.7.2"]
+                 ;; TODO: Switch to bidi
+                 ;; (it's built around plain data rather than macros
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
                                                  org.clojure/clojurescript]]
 
                  ;;; Generally Useful
-                 #_[cider/cider-nrepl "0.9.1"]  ; definitely should not need to do this
                  ;; Really should inherit my clojure version from this.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
-                 [com.taoensso/sente "1.8.1" :exclusions [org.clojure/clojure
-                                                          org.clojure/tools.reader]]
-                 ;; Shouldn't need this here, but it isn't being picked up in my profile
-                 [figwheel "0.5.4-3" :exclusions [cider/cider-nrepl
-                                                  org.clojure/clojure
-                                                  org.clojure/clojurescript]]
-                 ;; Definitely shouldn't need this, since figwheel already depends on it
-                 [figwheel-sidecar "0.5.4-3" :exclusions [cider/cider-nrepl
+                 [com.taoensso/sente "1.8.1" :exclusions [com.taoensso/encore
+                                                          com.taoensso/timbre
                                                           org.clojure/clojure
-                                                          org.clojure/clojurescript
-                                                          org.clojure/java.classpath]]
-                 [org.clojure/core.match "0.2.2" :exclusions [org.clojure/clojure]]]
+                                                          org.clojure/core.async
+                                                          org.clojure/tools.reader]]
+                 #_[figwheel "0.5.4-3" :exclusions [cider/cider-nrepl
+                                                    org.clojure/clojure
+                                                    org.clojure/clojurescript
+                                                    org.clojure/tools.reader
+                                                    ring/ring-core]]
+                 #_[figwheel-sidecar "0.5.4-3" :exclusions [cider/cider-nrepl
+                                                            org.clojure/clojure
+                                                            org.clojure/clojurescript
+                                                            org.clojure/java.classpath]]
+                 [org.clojure/core.match "0.2.2" :exclusions [org.clojure/clojure
+                                                              org.clojure/core.cache
+                                                              org.clojure/core.memoize
+                                                              org.clojure/data.priority-map
+                                                              org.clojure/tools.analyzer.jvm
+                                                              org.ow2.asm/asm-all]]]
   :description "Another waffle in my indecision about making this web-based"
 
   :figwheel {
@@ -132,22 +158,22 @@
             :url "http://www.eclipse.org/legal/epl-v10.html"}
   :main ^:skip-aot com.frereth.web.core
 
-  :plugins [[cider/cider-nrepl "0.9.1"] ; shouldn't need to do this. No idea what's pulling in 0.8.2.
-            [com.jakemccrary/lein-test-refresh "0.9.0"]
+  :plugins [[com.jakemccrary/lein-test-refresh "0.9.0"]
             [lein-cljsbuild "1.0.6" :exclusions [org.clojure/clojure]]
-            [lein-figwheel "0.3.5" :exclusions [org.codehaus.plexus/plexus-utils
-                                                org.clojure/clojure]]]
+            [lein-figwheel "0.5.4-3" :exclusions [cider/cider-nrepl
+                                                   org.clojure/clojure
+                                                   org.clojure/clojurescript
+                                                   org.clojure/tools.reader
+                                                   ;;org.codehaus.plexus/plexus-utils
+                                                   ring/ring-core]]]
 
   :profiles {:dev-base {:immutant {:context-path "/frereth"
                                    :nrepl-port 4242
                                    :lein-profiles [:dev]
                                    :env :dev}
-                        :plugins [#_[lein-figwheel "0.3.3" :exclusions [org.clojure/clojurescript
-                                                                        org.codehaus.plexus/plexus-utils]]
-                                  #_[com.jakemccrary/lein-test-refresh "0.9.0"]]
                         :resource-paths ["dev-resources"]
                         :source-paths ["dev"]}
-             :figwheel {:dependencies [#_[figwheel "0.3.3"]]
+             :figwheel {:dependencies []
                         :figwheel {:css-dirs ["resources/public/css"]
                                    :resource-paths ["target/js"]}}
              ;; Q: Why isn't this working?

@@ -7,7 +7,10 @@
             [schema.core :as s]
             [taoensso.timbre :as log]))
 
-;;;; TODO: Nothing except the routes actually belongs in here
+;;;; N.B.: Nothing except the routes actually belongs in here
+
+;; TODO: Add a standard handler for the basic boiler
+;; plate.
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -22,10 +25,18 @@
               :build s/Int})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Internal helpers
-
-;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Actual routes
+
+(defnk $echo$POST
+  "Really just for initial testing"
+  {:responses {200 {:reversed s/Str}
+               400 problem-explanation}}
+  [[:request params :- {:submit s/Str}]]
+  (log/debug "echo POST handling\n" (util/pretty params))
+  (if-let [s (:submit params)]
+    {:reversed (string/reverse s)}
+    {:status 400
+     :body {:problem "Missing submit parameter"}}))
 
 (defnk $version$GET
   "This needs to from somewhere else automatically.
@@ -40,14 +51,3 @@ TODO: See how clojurescript and core.async handle that"
    :body (pr-str {:major 0
                   :minor 1
                   :build 1})})
-
-(defnk $echo$POST
-  "Really just for initial testing"
-  {:responses {200 {:reversed s/Str}
-               400 problem-explanation}}
-  [[:request params :- {:submit s/Str}]]
-  (log/debug "echo POST handling\n" (util/pretty params))
-  (if-let [s (:submit params)]
-    {:reversed (string/reverse s)}
-    {:status 400
-     :body {:problem "Missing submit parameter"}}))

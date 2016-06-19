@@ -1,12 +1,5 @@
 (ns com.frereth.web.system
-  "This is where all the interesting stuff gets created.
-
-TODO: Switch to using completion-dsl, now that I've gone
-and done it.
-
-Actually, compare it with this. The code here looks way
-more impressive
-"
+  "This is where all the interesting stuff gets created."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [com.stuartsierra.component :as component]
@@ -82,7 +75,10 @@ extra-files: seq of absolute file paths to merge in. For
   [command-line-args
    config-file-name :- s/Str]
 
-  ;; TODO: Go back to the original, commented-out version.
+  ;; Q: Do I want to go back to something more similar to this
+  ;; original, commented-out version?
+  ;; (i.e. where I load the EDN description from a file instead
+  ;; of hard-coding it here)
   (comment
     (let [system-description (-> system-description-file-name
                                  io/resource
@@ -94,6 +90,7 @@ extra-files: seq of absolute file paths to merge in. For
                        :initialization-map
                        (cpt-dsl/system-map options))]
       (cpt-dsl/dependencies pre-init (:dependencies system-description))))
+
   ;; This is where the real action starts these days
   (let [constructors '{:complete com.frereth.web.completion/ctor
                        ;; Poor name. This is really the frereth-client.
@@ -101,10 +98,11 @@ extra-files: seq of absolute file paths to merge in. For
                        ;; TODO: Either way, pick a better one.
                        :frereth-server com.frereth.client.system/init
                        :http-router com.frereth.web.routes.core/ctor
-                       ;; TODO: Add the web socket handler
+                       :web-sock-handler com.frereth.web.routes.websock/ctor
                        :web-server com.frereth.web.handler/ctor}
-        dependencies  {:http-router [:frereth-server]
+        dependencies  {:http-router [:frereth-server :web-sock-handler]
                        :web-server [:http-router]
+                       :web-sock-handler [:frereth-server]
                        :frereth-server [:complete]}]
     (cpt-dsl/build {:structure constructors
                     :dependencies dependencies}
