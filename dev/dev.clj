@@ -9,14 +9,14 @@
             [clojure.repl :refer :all]
             [clojure.test :as test]
             [clojure.tools.namespace.repl :refer (refresh refresh-all)]
-            [clojurescript-build.auto :as auto]
+            #_[clojurescript-build.auto :as auto]
             #_[com.frereth.common.util :as util]
             [com.frereth.web.system :as system]
             [com.stuartsierra.component :as component]
             [component-dsl.system :as cpt-dsl]  ; Q: Will I really be using this often?
-            [figwheel-sidecar.auto-builder :as fig-auto]
-            [figwheel-sidecar.core :as fig]
-            [figwheel-sidecar.repl-api :as repl-api]
+            #_[figwheel-sidecar.auto-builder :as fig-auto]
+            #_[figwheel-sidecar.core :as fig]
+            #_[figwheel-sidecar.repl-api :as repl-api]
             [ribol.core :refer (raise)]
             [schema.core :as s]
             [taoensso.timbre :as log]))
@@ -115,13 +115,15 @@ Can't just call this go: that conflicts with a macro from core.async."
 ;; Q: Do I want to add this to start/stop?
 (comment (def repl-env nil))
 
-(defn cljs
-  "Switch to the cljs REPL
+;; TODO: Real CIDER/figwheel integration
+(comment
+  (defn cljs
+    "Switch to the cljs REPL
 
-There's an emacs plugin for running both @ same time
-TODO: switch to it"
-  []
-  (repl-api/cljs-repl))
+  There's an emacs plugin for running both @ same time
+  TODO: switch to it"
+    []
+    (repl-api/cljs-repl)))
 
 (comment
   ;; This looks like it works at first, but cider can't connect

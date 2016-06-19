@@ -60,9 +60,10 @@
                  [prismatic/fnhouse "0.2.1" :exclusions [prismatic/plumbing
                                                          prismatic/schema]]
                  [ring/ring-core "1.5.0" :exclusions [commons-codec
-                                                          joda-time
-                                                          org.clojure/clojure
-                                                          org.clojure/tools.reader]]
+                                                      joda-time
+                                                      org.clojure/clojure
+                                                      org.clojure/tools.reader]]
+                 [ring/ring-devel "1.5.0" :exclusions [org.clojure/tools.namespace]]
                  [ring/ring-anti-forgery "1.0.1" :exclusions [org.clojure/clojure]]
                  [ring/ring-defaults "0.2.1" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
