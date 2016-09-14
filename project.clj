@@ -35,10 +35,10 @@
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [[org.clojure/clojure "1.9.0-alpha5"]
+  :dependencies [[org.clojure/clojure "1.9.0-alpha11"]  ; TODO: Make this go back away
 
                  ;; Probably only useful server-side
-                 [com.cognitect/transit-clj "0.8.285" :exclusions [com.fasterxml.jackson.core/jackson-core]]
+                 [com.cognitect/transit-clj "0.8.288" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  ;; TODO: How many of these exclusions are still needed?
                  ;; And do more get added w/ this version bump?
                  [org.immutant/immutant "2.1.5" :exclusions [clj-tuple
@@ -80,14 +80,14 @@
                  [com.cognitect/transit-cljs "0.8.239"]
                  ;; Q: Is there any remaining use for this?
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
-                 [org.clojure/clojurescript "1.9.93" :exclusions [org.clojure/clojure
-                                                                  org.clojure/tools.reader]]
+                 [org.clojure/clojurescript "1.9.229" :exclusions [org.clojure/clojure
+                                                                   org.clojure/tools.reader]]
                  ;; TODO: This needs to go away.
                  ;; It's up to the individual Apps.
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
                  ;; TODO: This needs to go away.
                  ;; It's up to the individual Apps.
-                 [sablono "0.7.3"]
+                 [sablono "0.7.4"]
                  ;; TODO: Switch to bidi
                  ;; (it's built around plain data rather than macros
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
@@ -96,11 +96,11 @@
                  ;;; Generally Useful
                  ;; Really should inherit my clojure version from this.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
-                 [com.taoensso/sente "1.9.0" :exclusions [com.taoensso/encore
-                                                          com.taoensso/timbre
-                                                          org.clojure/clojure
-                                                          org.clojure/core.async
-                                                          org.clojure/tools.reader]]
+                 [com.taoensso/sente "1.10.0" :exclusions [com.taoensso/encore
+                                                           com.taoensso/timbre
+                                                           org.clojure/clojure
+                                                           org.clojure/core.async
+                                                           org.clojure/tools.reader]]
                  #_[figwheel "0.5.4-3" :exclusions [cider/cider-nrepl
                                                     org.clojure/clojure
                                                     org.clojure/clojurescript
@@ -160,13 +160,13 @@
   :main ^:skip-aot com.frereth.web.core
 
   :plugins [[com.jakemccrary/lein-test-refresh "0.9.0"]
-            [lein-cljsbuild "1.0.6" :exclusions [org.clojure/clojure]]
-            [lein-figwheel "0.5.4-3" :exclusions [cider/cider-nrepl
-                                                   org.clojure/clojure
-                                                   org.clojure/clojurescript
-                                                   org.clojure/tools.reader
-                                                   ;;org.codehaus.plexus/plexus-utils
-                                                   ring/ring-core]]]
+            [lein-cljsbuild "1.1.4" :exclusions [org.clojure/clojure]]
+            [lein-figwheel "0.5.7" :exclusions [cider/cider-nrepl
+                                                org.clojure/clojure
+                                                org.clojure/clojurescript
+                                                org.clojure/tools.reader
+                                                ;;org.codehaus.plexus/plexus-utils
+                                                ring/ring-core]]]
 
   :profiles {:dev-base {:immutant {:context-path "/frereth"
                                    :nrepl-port 4242

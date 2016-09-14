@@ -4,9 +4,9 @@
   Mainly so background threads can exit and let the
   container's GC handle permgen
 
-  TODO: Rename this something less grandiose. Like `done`"
-  (:require [com.stuartsierra.component :as component]
-            [schema.core :as s]))
+  TODO: Dump this. Use the one supplied by component-dsl"
+  (:require [clojure.spec :as s]
+            [com.stuartsierra.component :as component]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -20,6 +20,10 @@
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(s/defn ^:always-validate ctor :- FinishedHandler
-  [_ :- {}]
+(s/fdef ctor
+        :args (s/cat :ignored any?)
+        :ret FinishedHandler)
+(defn ctor
+  [_]
+  (throw (ex-info "Obsolete" {:replacement "Built-in in component-dsl"}))
   {:done (promise)})
