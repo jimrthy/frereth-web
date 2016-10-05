@@ -35,10 +35,10 @@
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [[org.clojure/clojure "1.9.0-alpha11"]  ; TODO: Make this go back away
+  :dependencies [[org.clojure/clojure "1.9.0-alpha13"]  ; TODO: Make this go back away
 
                  ;; Probably only useful server-side
-                 [com.cognitect/transit-clj "0.8.288" :exclusions [com.fasterxml.jackson.core/jackson-core]]
+                 [com.cognitect/transit-clj "0.8.290" :exclusions [com.fasterxml.jackson.core/jackson-core]]
                  ;; TODO: How many of these exclusions are still needed?
                  ;; And do more get added w/ this version bump?
                  [org.immutant/immutant "2.1.5" :exclusions [clj-tuple
@@ -87,7 +87,7 @@
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
                  ;; TODO: This needs to go away.
                  ;; It's up to the individual Apps.
-                 [sablono "0.7.4"]
+                 [sablono "0.7.5"]
                  ;; TODO: Switch to bidi
                  ;; (it's built around plain data rather than macros
                  [secretary "1.2.3" :exclusions [org.clojure/clojure

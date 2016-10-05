@@ -2,15 +2,14 @@
   "This is where all the interesting stuff gets created."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
+            [clojure.spec :as s]
             [com.stuartsierra.component :as component]
             [com.frereth.common.util :as util]
+            [component-dsl.system]
             [component-dsl.system :as cpt-dsl]
             [io.aviso.config :as cfg]
-            [ribol.core :refer (raise)]
-            [schema.core :as s]
             [taoensso.timbre :as log])
-  (:import [clojure.lang ExceptionInfo]
-           [com.stuartsierra.component SystemMap]))
+  (:import [clojure.lang ExceptionInfo]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
@@ -48,7 +47,11 @@ TODO: Move to a Component in common"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(s/defn ctor :- SystemMap
+(s/fdef ctor
+        :args (s/cat :unused-command-line-args any?
+                     :unused-config-file-name ::config-file-name)
+        :ret :component-dsl.system/system-map)
+(defn ctor
   "Returns a system that's ready to start, based on config
 files.
 
@@ -72,8 +75,7 @@ command-line-args is really meant to be a seq of
 extra-files: seq of absolute file paths to merge in. For
   the sake of setting up configuration outside the CLASSPATH
 "
-  [command-line-args
-   config-file-name :- s/Str]
+  [command-line-args config-file-name]
 
   ;; Q: Do I want to go back to something more similar to this
   ;; original, commented-out version?

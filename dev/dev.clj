@@ -17,8 +17,6 @@
             #_[figwheel-sidecar.auto-builder :as fig-auto]
             #_[figwheel-sidecar.core :as fig]
             #_[figwheel-sidecar.repl-api :as repl-api]
-            [ribol.core :refer (raise)]
-            [schema.core :as s]
             [taoensso.timbre :as log]))
 
 ;; We wrap the system in a system wrapper so that we can define a

@@ -1,8 +1,7 @@
 (ns com.frereth.web.core
   (:require [com.stuartsierra.component :as component]
             [com.frereth.web.system :as sys]
-            [immutant.daemons :as daemons]
-            [ribol.core :refer (raise)])
+            [immutant.daemons :as daemons])
   ;; Q: Do I want to do this?
   ;; It just seems to cause trouble
   #_(:gen-class))

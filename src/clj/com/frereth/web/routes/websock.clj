@@ -5,13 +5,13 @@ Actually, it probably doesn't have to center around
 sente at all."
   (:require [clojure.core.async :as async]
             [clojure.core.match :refer [match]]
+            [clojure.spec :as s]
+            [com.frereth.client.app-pieces :as app-pieces]
             [com.frereth.client.connection-manager :as con-man]
             [com.frereth.common.schema :as fr-skm]
             [com.frereth.common.util :as util]
             [com.frereth.web.routes.ring :as fr-ring]
             [com.stuartsierra.component :as component]
-            [ribol.core :refer (manage on raise)]
-            [schema.core :as s]
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.immutant :refer (sente-web-server-adapter)]
             [taoensso.timbre :as log :refer (debugf)])
@@ -20,73 +20,52 @@ sente at all."
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
 
-(def sente-event-type
-  "Note that this must be namespaced, according to the docs"
-  s/Keyword)
+;; Note that this must be namespaced, according to the docs
+;; What are the odds that this provides something useful
+;; when passed through conform?
+(s/def ::sente-event-type (s/and keyword? namespace))
 
-(def sente-event
-  [sente-event-type s/Any])
+(s/def ::sente-event (s/tuple ::sente-event-type any?))
 
-(def channel-socket
-  {:ring-ajax-post fr-ring/HttpRequestHandler
-   :ring-ajax-get-or-ws-handshake fr-ring/HttpRequestHandler
-   :receive-chan fr-skm/async-channel
-   :send! (s/=> s/Any)
-   :connected-uids fr-skm/atom-type})
+(s/def ::ring-ajax-post :com.frereth.web.routes.ring/http-request-handler)
+(s/def ::ring-ajax-get-or-ws-handshake
+  :com.frereth.web.routes.ring/http-request-handler)
+(s/def ::receive-chan :com.frereth.common.schema/async-channel)
+(s/def ::send! (s/fspec :args (s/cat :only any?)))
+(s/def ::connected-uids :com.frereth.common.schema/atom-type)
+(s/def ::channel-socket (s/keys :req-un [::connected-uids
+                                         ::receive-chan
+                                         ::ring-ajax-post
+                                         ::ring-ajax-get-or-ws-handshake
+                                         ::send!]))
 
-(declare make-channel-socket reset-web-socket-handler!)
-(s/defrecord WebSockHandler [ch-sock :- (s/maybe channel-socket)
-                             ;; In a lot of ways, this needs to be a map
-                             ;; for handling multiple connections
-                             frereth-server
-                             ws-controller :- (s/maybe fr-skm/async-channel)
-                             ws-stopper :- (s/maybe (s/=> s/Any))]
-  component/Lifecycle
-  (start
-   [this]
-   ;; This is one scenario where it doesn't make any sense to try to
-   ;; recycle the previous version
-   (when ws-controller
-     (async/close! ws-controller))
-   (let [ch-sock (or ch-sock
-                     ;; This brings up an important question:
-                     ;; how (if at all) does the web socket handler
-                     ;; interact with the "normal" HTTP handlers?
-                     ;; It seems like there is a lot of ripe fruit for
-                     ;; the plucking here.
-                     ;; TODO: Pick an initial approach.
-                     ;; Probably shouldn't create either in here.
-                     ;; This is really just for the sake of wiring
-                     ;; together all the communications pieces with
-                     ;; whatever dependencies may be involved.
-                     (make-channel-socket))
-         ws-controller (async/chan)
-         almost-started (assoc this
-                               :ch-sock ch-sock
-                               :ws-controller ws-controller)
-         web-sock-stopper (reset-web-socket-handler! almost-started)]
-     (assoc almost-started
-            :ws-stopper web-sock-stopper)))
-  (stop
-   [this]
-   (log/debug "Closing the ws-controller channel")
-   (when ws-controller (async/close! ws-controller))
-   (log/debug "Calling ws-stopper...which should be redundant")
-   (when ws-stopper
-     (ws-stopper))
-   (assoc this
-          :ch-sock nil
-          :ws-controller nil
-          :ws-stopper nil)))
+;; Q: What is this?
+;; A: In a lot of ways, this needs to be a map
+;; for handling multiple connections
+(s/def ::frereth-server any?)
+(s/def ::ws-controller (s/nilable :com.frereth.common.schema/async-channel))
+(s/def ::ws-stopper (s/fspec :args (s/cat :signal any?)
+                             :ret any?))
+
+(s/def ::web-sock-handler (s/keys :req-un [::frereth-server]
+                                  :opt-un [::channel-socket
+                                           ::ws-controller
+                                           ::ws-stopper]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(s/defn reply
-  [this :- WebSockHandler   ; Q: Will there ever be any reason for this?
+(s/fdef reply
+        :args (s/cat :this ::web-sock-handler
+                     :what? any?
+                     :event-key keyword?
+                     :event-data any?)
+        )
+(defn reply
+  [this  ; Q: Will there ever be any reason for this?
    {:keys [data? id ?reply-fn send-fn uid]}
-   event-key :- s/Keyword
-   event-data :- s/Any]
+   event-key
+   event-data]
   (let [msg (str "replying to: " id
                  "\n\tthis: "(keys this) ", a " (class this)
                  "\n\tevent-key: " event-key
@@ -96,7 +75,7 @@ sente at all."
     ;; One really obnoxious bit about the weirdness I'm running across here:
     ;; I'm not even using this
     ;; Q: What weirdness?
-    (let [actual (s/validate WebSockHandler this)]
+    (let [actual (s/conform ::web-sock-handler this)]
       (let [response [event-key event-data]]
         (if ?reply-fn
           (?reply-fn response)
@@ -106,34 +85,53 @@ sente at all."
                      (util/pretty (.getData ex)))]
         (log/error ex msg)))))
 
-(s/defn ^:always-validate post
+;; TODO: Narrow this spec down
+;; TODO: ^:always-validate
+(s/fdef post
+        :args (s/cat :send-fn any?
+                     :id any?
+                     :event-key keyword?
+                     :event-data any?)
+        :ret any?)
+(defn post
   [send-fn
    id
-   event-key :- s/Keyword
-   event-data :- s/Any]
+   event-key
+   event-data]
   ;; Q: Should I prefer client-id or uid?
   (send-fn id [event-key event-data]))
 
-(s/defn not-found
-  [this :- WebSockHandler
-   ev-msg]
+(s/fdef not-found
+        :args (s/cat :this ::web-sock-handler
+                     ;; This is what I'm passing along to reply
+                     :ev-msg any?)
+        :ret any?)
+(defn not-found
+  [this ev-msg]
   (log/error "No handler for:\n" (util/pretty ev-msg))
   (reply this ev-msg :http/not-found {:status 404 :body "\"Not Found\""}))
 
-(s/defn forward
-  [this :- WebSockHandler
+(s/fdef forward
+        :args (s/cat :this ::web-sock-handler
+                     :msg any?)
+        :ret any?)
+(defn forward
+  [this
    {:keys [send-fn] :as msg}]
-  (raise :not-implemented))
+  (throw (ex-info ":not-implemented" {})))
 
-(s/defn initiate-auth!
-  [this :- WebSockHandler
-   ev-msg]
+(s/fdef initiate-auth!
+        :args (s/cat :this ::web-sock-handler
+                     :ev-msg any?)
+        :ret any?)
+(defn initiate-auth!
+  [this ev-msg]
   (comment (log/debug "Initiating AUTH on server based on:\n" (keys ev-msg)
                       "\nEvent: " (:event ev-msg)
                       "\nData: " (:?data ev-msg)))
   (async/thread
     (let [cpt (-> this :frereth-server :connection-manager)]
-      (if-let [response (con-man/initiate-handshake cpt (:?data ev-msg) 5 2000)]
+      (if-let [response (app-pieces/initiate-handshake cpt (:?data ev-msg) 5 2000)]
         (do
           (reply this ev-msg :frereth/response {:status 200 :body "Handshake Completed"})
           (let [{:keys [uid client-id]} ev-msg
@@ -141,14 +139,34 @@ sente at all."
             (post (:send-fn ev-msg) id :frereth/start-world response)))
         (reply this ev-msg :http/bad-gateway {:status 502 :body "Handshake initiation failed"})))))
 
-(s/defn ping
-  [this :- WebSockHandler
-   ev-msg]
+(s/fdef ping
+        :args (s/cat :this ::web-sock-handler
+                     :ev-msg any?)
+        :ret any?)
+(defn ping
+  [this ev-msg]
   ;; Might as well take advantage of what's available
   (log/debug "Pinged!\nTODO: Forward this along to the server"))
 
-(s/defn request-ns-load!
-  [this :- WebSockHandler
+(s/def ::module-name string?)
+(s/def ::macro? boolean?)
+(s/def ::path string?)
+(s/def ::request-id any?)  ; TODO: Track this down wherever it is
+(s/def ::world any) ; Q: What is this?
+(s/def ::ns-load-request (s/keys :req-un [::module-name
+                                          ::macro?
+                                          ::path
+                                          ::request-id
+                                          ::world]))
+(s/fdef request-ns-load!
+        :args (s/cat :this ::web-sock-handler
+                     :data ::ns-load-request
+                     ;; Q: Has this been spec'd yet?
+                     :on-success (s/fspec :args any?
+                                          :ret any?))
+        :ret :com.frereth.common.schema/async-chan)
+(defn request-ns-load!
+  [this
    {:keys [module-name macro? path request-id world] :as data}
    on-success]
   ;; Q: Does it make sense to spawn the thread here? Or in the caller?
@@ -183,7 +201,9 @@ sente at all."
                      ;; I think my plan here was to return this to the caller to be executed on the renderer
                      (do
                        (log/error "Synchronous RPC call timed out")
-                       {:script '(throw (ex-info (str "Loading ns:" module-name) {:timeout true}))})))]
+                       {:script '(throw (ex-info (str "Loading ns:"
+                                                      module-name)
+                                                 {:timeout true}))})))]
             (reply this
                    data
                    :frereth/loaded-ns
@@ -194,8 +214,13 @@ sente at all."
                result))
     background-thread))
 
-(s/defn initialize-connection!
-  [this :- WebSockHandler
+(s/fdef initialize-connection!
+        :args (s/cat :this ::web-sock-handler
+                     ;; Q: What are these keys really?
+                     :msg any?)
+        :ret any?)
+(defn initialize-connection!
+  [this
    {:keys [id ?data event]}]
   ;; Q: Is there anything useful I can do here?
   ;; A: Well, could start priming client connection to make sure
@@ -203,8 +228,12 @@ sente at all."
   ;; Since that's coming next.
   (log/info "Browser connected"))
 
-(s/defn event-handler
-  [this :- WebSockHandler
+(s/fdef event-handler
+        :args (s/cat :this ::web-sock-handler
+                     :ev-msg any?)
+        :ret any?)
+(defn event-handler
+  [this
    {:keys [id ?data event ?reply-fn] :as ev-msg}]
   (when-not (= event [:chsk/ws-ping])
     ;; The ws-ping happens every 20 seconds.
@@ -233,22 +262,30 @@ sente at all."
                                          (util/pretty ?data))
          :else (not-found this ev-msg)))
 
-(s/defn handle-ws-event-loop-msg :- s/Any
+(s/def ::ch :com.frereth.common.schema/async-channel)
+(s/def ::rcvr :com.frereth.common.schema/async-channel)
+(s/def handle-ws-event-loop-msg
+  ;; mish-mash because of the way this was refactored out of the middle of the loop
+  ;; ch is the channel that the request came in on
+  ;; rcvr is the channel where browser messages come from
+  ;; web-sock-handler...is probably the Component
+  :args (s/cat :bundle (s/keys :req-un [::ch
+                                        ::rcvr
+                                        ::web-sock-handler])
+               :msg any?)
+  :ret any?)
+(defn handle-ws-event-loop-msg
   "Refactored from them middle of the go block
 created by reset-web-socket-handler! so I can
 update on the fly.
 
 Besides, it's much more readable this way"
 
-  [;; mish-mash because of the way this was refactored out of the middle of the loop
-   ;; ch is the channel that the request came in on
-   ;; rcvr is the channel where browser messages come from
-   ;; web-sock-handler...is probably the Component
-   {:keys [ch rcvr web-sock-handler] :as bundle}
-   msg :- s/Any]
+  [{:keys [ch rcvr web-sock-handler] :as bundle}
+   msg]
   (when-not web-sock-handler
     (log/error "Missing web socket handler in:\n" (util/pretty bundle))
-    (raise :what-do-I-have-wrong?))
+    (throw (ex-info ":what-do-I-have-wrong?" {})))
   (if (= ch rcvr)
     (do
       (comment (log/debug "Incoming message from a browser"))
@@ -262,7 +299,10 @@ Besides, it's much more readable this way"
         (assert (= ch ws-controller)))
       (async/alts! [(async/timeout 100) [responder :Im-alive]]))))
 
-(s/defn reset-web-socket-handler! :- (s/=> s/Any)
+(s/fdef reset-web-socket-handler!
+        :args (s/cat :web-sock-handler ::web-sock-handler)
+        :ret (s/fspec :args any? :ret any?))
+(defn reset-web-socket-handler!
   "Replaces the existing web-socket-handler (aka router)
 (if any) with a new one, built around ch-sock.
 Returns a function for closing
@@ -272,7 +312,7 @@ call as the next stop-fn)
 It's very tempting to try to pretend that this is a pure
 function, but its main point is the side-effects around
 the event loop"
-  [{:keys [ch-sock ws-controller ws-stopper] :as web-sock-handler} :- WebSockHandler]
+  [{:keys [ch-sock ws-controller ws-stopper] :as web-sock-handler}]
   (let [stop-fn ws-stopper]
     (io!
      (when stop-fn
@@ -332,9 +372,12 @@ the event loop"
       (log/error "Timed out trying to submit status request"))
     (async/close! responder)))
 
-(s/defn extract-user-id-from-request :- s/Str
+(s/fdef extract-user-id-from-request
+        :args (s/cat :req :com.frereth.web.routes.ring/ring-request)
+        :ret string?)
+(defn extract-user-id-from-request
   "This is more complicated than it appears at first"
-  [req :- fr-ring/RingRequest]
+  [req]
   ;; "Official" documented method for getting authenticated per-tab
   ;; session ID.
   ;; From sente's FAQ:
@@ -347,7 +390,10 @@ the event loop"
   ;; When a tab connects, use the client ID it generated randomly
   (:client-id req))
 
-(s/defn make-channel-socket :- channel-socket
+(s/fdef make-channel-socket
+        :args ()
+        :ret ::channel-socket)
+(defn make-channel-socket
   []
   (let [{:keys [ ch-recv send-fn ajax-post-fn ajax-get-or-ws-handshake-fn connected-uids]}
         (sente/make-channel-socket! sente-web-server-adapter {:packer :edn
@@ -372,12 +418,60 @@ the event loop"
      :connected-uids  connected-uids}))    ; Watchable, read-only atom
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Component
+
+(defrecord WebSockHandler [channel-socket
+                           frereth-server
+                           ws-controller
+                           ws-stopper]
+  component/Lifecycle
+  (start
+   [this]
+   ;; This is one scenario where it doesn't make any sense to try to
+   ;; recycle the previous version
+   (when ws-controller
+     (async/close! ws-controller))
+   (let [ch-sock (or ch-sock
+                     ;; This brings up an important question:
+                     ;; how (if at all) does the web socket handler
+                     ;; interact with the "normal" HTTP handlers?
+                     ;; It seems like there is a lot of ripe fruit for
+                     ;; the plucking here.
+                     ;; TODO: Pick an initial approach.
+                     ;; Probably shouldn't create either in here.
+                     ;; This is really just for the sake of wiring
+                     ;; together all the communications pieces with
+                     ;; whatever dependencies may be involved.
+                     (make-channel-socket))
+         ws-controller (async/chan)
+         almost-started (assoc this
+                               :ch-sock ch-sock
+                               :ws-controller ws-controller)
+         web-sock-stopper (reset-web-socket-handler! almost-started)]
+     (assoc almost-started
+            :ws-stopper web-sock-stopper)))
+  (stop
+   [this]
+   (log/debug "Closing the ws-controller channel")
+   (when ws-controller (async/close! ws-controller))
+   (log/debug "Calling ws-stopper...which should be redundant")
+   (when ws-stopper
+     (ws-stopper))
+   (assoc this
+          :ch-sock nil
+          :ws-controller nil
+          :ws-stopper nil)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(s/defn broadcast!
+(s/fdef broadcast!
+        :args (s/cat :router ::web-sock-handler
+                     :msg any?)
+        :ret any?)
+(defn broadcast!
   "Send message to all attached users"
-  [router :- WebSockHandler
-   msg :- s/Any]
+  [router msg]
   (let [ch-sock (:ch-sock router)
         uids (-> ch-sock :connected-uids deref :any)
         send! (:send! ch-sock)]
@@ -388,6 +482,10 @@ the event loop"
           (:http-router dev/system)
           [:frereth/ping nil]))
 
-(s/defn ctor :- WebSockHandler
+(s/fdef ctor
+        ;; Q: Can I do better spec'ing the args?
+        :args ::web-sock-handler
+        :ret ::web-sock-handler)
+(defn ctor
   [src]
   (map->WebSockHandler src))
