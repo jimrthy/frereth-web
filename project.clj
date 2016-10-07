@@ -98,6 +98,8 @@
                  ;; TODO: This needs to go away.
                  ;; It's up to the individual Apps.
                  [sablono "0.7.5"]
+                 [cljsjs/react "15.2.1-1"]
+                 [cljsjs/react-dom "15.2.1-1"]
                  ;; TODO: Switch to bidi
                  ;; (it's built around plain data rather than macros
                  [secretary "1.2.3" :exclusions [org.clojure/clojure

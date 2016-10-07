@@ -7,16 +7,11 @@
             [frereth.schema :as fr-skm]
             [frereth.world :as world]
             [om.core :as om]
-            [ribol.cljs :refer [create-issue
-                                *managers*
-                                *optmap*
-                                raise-loop]]
             [sablono.core :as sablono :include-macros true]
             [schema.core :as s :include-macros true]
             [taoensso.sente :as sente]
             [taoensso.timbre :as log])
-  (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)]
-                   [ribol.cljs :refer [raise]])
+  (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)])
   (:import [goog.net XhrIo]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

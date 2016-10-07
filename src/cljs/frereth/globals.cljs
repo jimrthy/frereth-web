@@ -1,13 +1,7 @@
 (ns ^:figwheel-load frereth.globals
     (:require [frereth.schema :as fr-skm]
-              [ribol.cljs :refer [create-issue
-                                  *managers*
-                                  *optmap*
-                                  raise-loop]]
               [schema.core :as s :include-macros true]
-              [taoensso.timbre :as log])
-    ;; Q: Could I simplify this by just using :include-macros above?
-    (:require-macros [ribol.cljs :refer [raise]]))
+              [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Schema
