@@ -2,6 +2,7 @@
   "Why is mapping HTTP end-points to handlers so contentious?"
   (:require [clojure.core.async :as async]
             [clojure.java.io :as io]
+            [clojure.spec :as s]
             [com.frereth.common.util :as util]
             [com.frereth.client.communicator :as comms]
             [com.frereth.web.routes.ring :as fr-ring]
@@ -9,11 +10,13 @@
             [com.frereth.web.routes.v1]  ; Just so it gets compiled, so fnhouse can find it
             [com.frereth.web.routes.websock :as ws]
             [com.stuartsierra.component :as component]
+            ;; TODO: These all need to go away
+            ;; (the trick is finding suitable replacements)
             [fnhouse.docs :as docs]
             [fnhouse.handlers :as handlers]
             [fnhouse.routes :as routes]
             [fnhouse.schemas :as fn-schemas]
-            [ribol.core :refer [raise]]
+            [hara.event :refer (raise)]
             ;; Q: Am I getting the ring header middleware with this group?
             [ring.middleware.content-type :refer (wrap-content-type)]
             [ring.middleware.defaults]
@@ -25,51 +28,37 @@
             [ring.middleware.resource :refer (wrap-resource)]
             [ring.middleware.stacktrace :refer (wrap-stacktrace)]
             [ring.util.response :as response]
-            [schema.core :as s]
             [taoensso.timbre :as log])
   (:import [com.frereth.client.communicator ServerSocket]
            [com.frereth.web.routes.websock WebSockHandler]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Schema
+;;; Specs
 
-(def StandardDescription {})
-(def StandardCtorDescription {:http-router StandardDescription})
+(s/def ::standard-description map?)
+(s/def ::standard-ctor-description (s/map-of ::http-router ::standard-description))
 
-(declare wrapped-root-handler)
-;;; This wouldn't be worthy of any sort of existence outside
-;;; the web server (until possibly it gets complex), except that
-;;; the handlers are going to need access to the Connection
-(s/defrecord HttpRoutes [frereth-client :- (s/maybe ServerSocket)
-                         ;; This record winds up in the system as
-                         ;; the http-router. It's confusing for it
-                         ;; to have another.
-                         ;; TODO: change one name or the other
-                         http-router :- (s/maybe fr-ring/HttpRequestHandler)
-                         web-sock-handler :- (s/maybe WebSockHandler)]
-  component/Lifecycle
-  (start
-   [this]
-   (assert web-sock-handler)
-   (assoc this
-          :http-router (wrapped-root-handler this)))
-  (stop
-   [this]
-   (log/debug "HTTP Router should be stopped")
-   (assoc this
-          :http-router nil)))
+;; This defines the mapping between URL prefixes and the
+;; namespaces where the appropriate route handlers live.
+;; Copy/pasted directly from fnhouse.
+;; (which means it also needs to go away)
+(s/def ::path-prefix string?)
+(s/def ::namespac simple-symbol?)
+(s/def ::http-route-map (s/map-of ::path-prefix ::namespace))
 
-(def http-route-map
-  "This defines the mapping between URL prefixes and the
-namespaces where the appropriate route handlers live.
-Copy/pasted directly from fnhouse."
-  {(s/named s/Str "path prefix")
-   (s/named s/Symbol "namespace")})
+(s/def ::frereth-client :com.frereth.client.communicator/server-socket)
+(s/def ::http-router :com.frereth.web.routes.ring/http-request-handler)
+(s/def ::http-routes (s/keys :opt-un [::frereth-client
+                                      ::http-router
+                                      :com.frereth.web.routes.websock/web-sock-handler]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
 
-(s/defn return-index :- s/Str
+(s/fdef return-index
+        :args ()
+        :ret string?)
+(defn return-index
   "Because there are a ton of different ways to try to access the root of a web app"
   []
   (if-let [url (io/resource "public/index.html")]
@@ -95,8 +84,12 @@ Copy/pasted directly from fnhouse."
      :status 404
      :headers {"Content-Type" "text/html"}}))
 
-(s/defn ^:always-validate index-middleware :- fr-ring/HttpRequestHandler
-  [handler :- fr-ring/HttpRequestHandler]
+;; TODO: ^:always-validate
+(s/fdef index-middleware
+        :args (s/cat :handler :com.frereth.web.routes.ring/http-request-handler)
+        :ret :com.frereth.web.routes.ring/http-request-handler)
+(defn  index-middleware
+  [handler]
   (fn [req]
     (let [path (:uri req)]
       (log/debug "Requested:" path)
@@ -115,13 +108,16 @@ Copy/pasted directly from fnhouse."
         (return-index)
         (handler req)))))
 
-(s/defn debug-middleware :- fr-ring/HttpRequestHandler
+(s/fdef debug-middleware
+        :args (s/cat :handler :com.frereth.web.routes.ring/http-request-handler)
+        :ret :com.frereth.web.routes.ring/http-request-handler)
+(defn debug-middleware
   "Log the request as it comes in.
 
 TODO: Should probably save it so we can examine later"
-  [handler :- fr-ring/HttpRequestHandler]
-  (s/fn :- fr-ring/RingResponse
-    [req :- fr-ring/RingRequest]
+  [handler]
+  (fn
+    [req]
     (comment (log/debug "Incoming Request:\n" (util/pretty req)))
     (handler req)))
 
@@ -165,33 +161,49 @@ TODO: Should probably save it so we can examine later"
         (wrap-content-type)
         (wrap-not-modified))))
 
-(s/defn attach-docs :- (s/=> fn-schemas/API handlers/Resources)
+;; This next bit of middleware has something to do with swagger.
+;; I remember that much about it.
+;; TODO: Remember what it was supposed to do and sort out a useful
+;; replaement
+(s/def ::handlers-resources any?)
+(s/def ::fn-schemas-API any?)
+(s/fdef attach-docs
+        :args (s/cat :component ::http-routes
+                     :route-map ::http-route-map)
+        :ret (s/fspec :args (s/cat :resources ::handlers-resources)
+                      :ret ::fn-schemas-API))
+(defn attach-docs
   "This is really where the fnhouse magic happens
 It's almost exactly the same as handlers/nss->handlers-fn
 The only difference seems to be attaching extra documentation pieces to the chain
 
 TODO: What does that gain me?"
-  [component :- HttpRoutes
-   route-map :- http-route-map]
+  [component route-map]
   (let [proto-handlers (handlers/nss->proto-handlers route-map)
         all-docs (docs/all-docs (map :info proto-handlers))]
     (-> component
         (assoc :api-docs all-docs)
         ((handlers/curry-resources proto-handlers)))))
 
-(s/defn fnhouse-handling
+(s/fdef fnhouse-handling
+        :args (s/cat :component ::http-routes
+                     :route-map ::http-route-map)
+        :ret any?)
+(defn fnhouse-handling
   "Convert the fnhouse routes defined in route-map to actual route handlers,
 making the component available as needed"
-  [component :- HttpRoutes
-   route-map :- http-route-map]
+  [component route-map]
   (let [routes-with-documentation (attach-docs component route-map)
         ;; TODO: if there's middleware to do coercion, add it here
         ]
     (routes/root-handler routes-with-documentation)))
 
-(s/defn wrapped-root-handler
+(s/fdef wrapped-root-handler
+        :args (s/cat :component ::http-routes)
+        :ret :com.frereth.web.routes.ring/http-request-handler)
+(defn wrapped-root-handler
   "Returns a handler (with middleware) for 'normal' http requests"
-  [component :- HttpRoutes]
+  [component]
   (-> (fnhouse-handling component {"v1" 'com.frereth.web.routes.v1
                                    "sente" 'com.frereth.web.routes.sente})
       index-middleware
@@ -199,8 +211,37 @@ making the component available as needed"
       wrap-standard-middleware))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+;;; Components
+
+;;; This wouldn't be worthy of any sort of existence outside
+;;; the web server (until possibly it gets complex), except that
+;;; the handlers are going to need access to the Connection
+(defrecord HttpRoutes [frereth-client
+                       ;; This record winds up in the system as
+                       ;; the http-router. It's confusing for it
+                       ;; to have another.
+                       ;; TODO: change one name or the other
+                       http-router
+                       web-sock-handler]
+  component/Lifecycle
+  (start
+   [this]
+   (assert web-sock-handler)
+   (assoc this
+          :http-router (wrapped-root-handler this)))
+  (stop
+   [this]
+   (log/debug "HTTP Router should be stopped")
+   (assoc this
+          :http-router nil)))
+
+;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
 
-(s/defn ^:always-validate ctor :- HttpRoutes
-  [_ :- StandardDescription]
-  (map->HttpRoutes _))
+;; TODO:  ^:always-validate
+(s/fdef ctor
+        :args (s/cat :options ::http-routes)
+        :ret ::http-routes)
+(defn ctor
+  [options]
+  (map->HttpRoutes options))

@@ -39,6 +39,7 @@
 
                  ;; Probably only useful server-side
                  [com.cognitect/transit-clj "0.8.290" :exclusions [com.fasterxml.jackson.core/jackson-core]]
+                 [im.chit/hara.event "2.4.5"]
                  ;; TODO: How many of these exclusions are still needed?
                  ;; And do more get added w/ this version bump?
                  [org.immutant/immutant "2.1.5" :exclusions [clj-tuple
@@ -57,20 +58,29 @@
                  ;; (it's up to 3.3.0.Final...how far can I successfully push it?)
                  ;; Some parts of it depend on this version, others on 3.2.1.GA
                  [org.jboss.logging/jboss-logging "3.1.4.GA"]
-                 [prismatic/fnhouse "0.2.1" :exclusions [prismatic/plumbing
-                                                         prismatic/schema]]
-                 [ring/ring-core "1.5.0" :exclusions [commons-codec
+                 ;; TODO: This needs to go away
+                 [prismatic/fnhouse "0.2.1" :exclusions [#_prismatic/plumbing
+                                                         #_prismatic/schema]]
+                 [ring/ring-anti-forgery "1.0.1" :exclusions [org.clojure/clojure]]
+                 ;; Conflicts between ring-core and frereth-client
+                 ;; Should pick up the frereth-client version(s)
+                 ;; since they're specifically excluded below,
+                 ;; but I seem to be running into that managed-
+                 ;; dependencies issue again
+                 [clj-time "0.12.0"]
+                 [ring/ring-core "1.5.0" :exclusions [clj-time
+                                                      commons-codec
                                                       joda-time
                                                       org.clojure/clojure
                                                       org.clojure/tools.reader]]
-                 [ring/ring-devel "1.5.0" :exclusions [org.clojure/tools.namespace]]
-                 [ring/ring-anti-forgery "1.0.1" :exclusions [org.clojure/clojure]]
                  [ring/ring-defaults "0.2.1" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
+                 [ring/ring-devel "1.5.0" :exclusions [org.clojure/tools.namespace]]
                  [ring/ring-headers "0.2.0" :exclusions [org.clojure/clojure]]
                  [ring-middleware-format "0.7.0" :exclusions [com.cognitect/transit-clj
                                                               org.clojure/clojure
                                                               org.clojure/core.memoize
+                                                              org.clojure/test.check
                                                               org.clojure/tools.reader]]
 
                  ;;; Client-Specific...more or less

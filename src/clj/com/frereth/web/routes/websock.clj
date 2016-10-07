@@ -12,6 +12,7 @@ sente at all."
             [com.frereth.common.util :as util]
             [com.frereth.web.routes.ring :as fr-ring]
             [com.stuartsierra.component :as component]
+            [hara.event :refer (manage raise)]
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.immutant :refer (sente-web-server-adapter)]
             [taoensso.timbre :as log :refer (debugf)])
@@ -118,7 +119,7 @@ sente at all."
 (defn forward
   [this
    {:keys [send-fn] :as msg}]
-  (throw (ex-info ":not-implemented" {})))
+  (raise :not-implemented))
 
 (s/fdef initiate-auth!
         :args (s/cat :this ::web-sock-handler
@@ -152,7 +153,7 @@ sente at all."
 (s/def ::macro? boolean?)
 (s/def ::path string?)
 (s/def ::request-id any?)  ; TODO: Track this down wherever it is
-(s/def ::world any) ; Q: What is this?
+(s/def ::world any?) ; Q: What is this?
 (s/def ::ns-load-request (s/keys :req-un [::module-name
                                           ::macro?
                                           ::path
@@ -164,7 +165,7 @@ sente at all."
                      ;; Q: Has this been spec'd yet?
                      :on-success (s/fspec :args any?
                                           :ret any?))
-        :ret :com.frereth.common.schema/async-chan)
+        :ret :com.frereth.common.schema/async-channel)
 (defn request-ns-load!
   [this
    {:keys [module-name macro? path request-id world] :as data}
@@ -264,16 +265,16 @@ sente at all."
 
 (s/def ::ch :com.frereth.common.schema/async-channel)
 (s/def ::rcvr :com.frereth.common.schema/async-channel)
-(s/def handle-ws-event-loop-msg
-  ;; mish-mash because of the way this was refactored out of the middle of the loop
-  ;; ch is the channel that the request came in on
-  ;; rcvr is the channel where browser messages come from
-  ;; web-sock-handler...is probably the Component
-  :args (s/cat :bundle (s/keys :req-un [::ch
-                                        ::rcvr
-                                        ::web-sock-handler])
-               :msg any?)
-  :ret any?)
+(s/fdef handle-ws-event-loop-msg
+        ;; mish-mash because of the way this was refactored out of the middle of the loop
+        ;; ch is the channel that the request came in on
+        ;; rcvr is the channel where browser messages come from
+        ;; web-sock-handler...is probably the Component
+        :args (s/cat :bundle (s/keys :req-un [::ch
+                                              ::rcvr
+                                              ::web-sock-handler])
+                     :msg any?)
+        :ret any?)
 (defn handle-ws-event-loop-msg
   "Refactored from them middle of the go block
 created by reset-web-socket-handler! so I can
@@ -285,7 +286,7 @@ Besides, it's much more readable this way"
    msg]
   (when-not web-sock-handler
     (log/error "Missing web socket handler in:\n" (util/pretty bundle))
-    (throw (ex-info ":what-do-I-have-wrong?" {})))
+    (raise :what-do-I-have-wrong?))
   (if (= ch rcvr)
     (do
       (comment (log/debug "Incoming message from a browser"))
@@ -426,41 +427,43 @@ the event loop"
                            ws-stopper]
   component/Lifecycle
   (start
-   [this]
-   ;; This is one scenario where it doesn't make any sense to try to
-   ;; recycle the previous version
-   (when ws-controller
-     (async/close! ws-controller))
-   (let [ch-sock (or ch-sock
-                     ;; This brings up an important question:
-                     ;; how (if at all) does the web socket handler
-                     ;; interact with the "normal" HTTP handlers?
-                     ;; It seems like there is a lot of ripe fruit for
-                     ;; the plucking here.
-                     ;; TODO: Pick an initial approach.
-                     ;; Probably shouldn't create either in here.
-                     ;; This is really just for the sake of wiring
-                     ;; together all the communications pieces with
-                     ;; whatever dependencies may be involved.
-                     (make-channel-socket))
-         ws-controller (async/chan)
-         almost-started (assoc this
-                               :ch-sock ch-sock
-                               :ws-controller ws-controller)
-         web-sock-stopper (reset-web-socket-handler! almost-started)]
-     (assoc almost-started
-            :ws-stopper web-sock-stopper)))
+    [this]
+    ;; This is one scenario where it doesn't make any sense to try to
+    ;; recycle the previous version
+    (when ws-controller
+      (async/close! ws-controller))
+    ;; Important Q: Who should be responsible for creating/destroying
+    ;; channel-sock?
+    (let [channel-socket (or channel-socket
+                             ;; This brings up an important question:
+                             ;; how (if at all) does the web socket handler
+                             ;; interact with the "normal" HTTP handlers?
+                             ;; It seems like there is a lot of ripe fruit for
+                             ;; the plucking here.
+                             ;; TODO: Pick an initial approach.
+                             ;; Probably shouldn't create either in here.
+                             ;; This is really just for the sake of wiring
+                             ;; together all the communications pieces with
+                             ;; whatever dependencies may be involved.
+                             (make-channel-socket))
+          ws-controller (async/chan)
+          almost-started (assoc this
+                                :channel-socket channel-socket
+                                :ws-controller ws-controller)
+          web-sock-stopper (reset-web-socket-handler! almost-started)]
+      (assoc almost-started
+             :ws-stopper web-sock-stopper)))
   (stop
-   [this]
-   (log/debug "Closing the ws-controller channel")
-   (when ws-controller (async/close! ws-controller))
-   (log/debug "Calling ws-stopper...which should be redundant")
-   (when ws-stopper
-     (ws-stopper))
-   (assoc this
-          :ch-sock nil
-          :ws-controller nil
-          :ws-stopper nil)))
+    [this]
+    (log/debug "Closing the ws-controller channel")
+    (when ws-controller (async/close! ws-controller))
+    (log/debug "Calling ws-stopper...which should be redundant")
+    (when ws-stopper
+      (ws-stopper))
+    (assoc this
+           :channel-socket nil
+           :ws-controller nil
+           :ws-stopper nil)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
