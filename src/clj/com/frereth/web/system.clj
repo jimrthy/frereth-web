@@ -98,16 +98,16 @@ extra-files: seq of absolute file paths to merge in. For
                        ;; Poor name. This is really the frereth-client.
                        ;; Or maybe the frereth-server-connection.
                        ;; TODO: Either way, pick a better one.
-                       :frereth-server com.frereth.client.system/init
+                       :frereth-client com.frereth.client.system/init
                        :http-router com.frereth.web.routes.core/ctor
                        :web-sock-handler com.frereth.web.routes.websock/ctor
                        :web-server com.frereth.web.handler/ctor}
-        dependencies  {:http-router [:frereth-server :web-sock-handler]
+        dependencies  {:http-router [:frereth-client :web-sock-handler]
                        :web-server [:http-router]
                        :web-sock-handler [:frereth-server]
                        :frereth-server [:complete]}]
-    (cpt-dsl/build {:structure constructors
-                    :dependencies dependencies}
+    (cpt-dsl/build #:component-dsl.system{:structure constructors
+                                          :dependencies dependencies}
                    {})))
 
 ;; TODO: This needs to be a unit test
