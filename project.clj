@@ -58,6 +58,7 @@
                  ;; (it's up to 3.3.0.Final...how far can I successfully push it?)
                  ;; Some parts of it depend on this version, others on 3.2.1.GA
                  [org.jboss.logging/jboss-logging "3.1.4.GA"]
+                 [bidi "2.0.12"]
                  ;; TODO: This needs to go away
                  [prismatic/fnhouse "0.2.1" :exclusions [#_prismatic/plumbing
                                                          #_prismatic/schema]]

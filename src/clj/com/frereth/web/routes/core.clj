@@ -6,8 +6,8 @@
             [com.frereth.common.util :as util]
             [com.frereth.client.communicator :as comms]
             [com.frereth.web.routes.ring :as fr-ring]
-            [com.frereth.web.routes.sente]
-            [com.frereth.web.routes.v1]  ; Just so it gets compiled, so fnhouse can find it
+            [com.frereth.web.routes.sente :as routes-sente]
+            [com.frereth.web.routes.v1 :as routes-v1]
             [com.frereth.web.routes.websock :as ws]
             [com.stuartsierra.component :as component]
             ;; TODO: These all need to go away
@@ -15,7 +15,7 @@
             [fnhouse.docs :as docs]
             [fnhouse.handlers :as handlers]
             [fnhouse.routes :as routes]
-            [fnhouse.schemas :as fn-schemas]
+            #_[fnhouse.schemas :as fn-schemas]
             [hara.event :refer (raise)]
             ;; Q: Am I getting the ring header middleware with this group?
             [ring.middleware.content-type :refer (wrap-content-type)]
@@ -161,51 +161,92 @@ TODO: Should probably save it so we can examine later"
         (wrap-content-type)
         (wrap-not-modified))))
 
-;; This next bit of middleware has something to do with swagger.
-;; I remember that much about it.
-;; TODO: Remember what it was supposed to do and sort out a useful
-;; replaement
-(s/def ::handlers-resources any?)
-(s/def ::fn-schemas-API any?)
-(s/fdef attach-docs
-        :args (s/cat :component ::http-routes
-                     :route-map ::http-route-map)
-        :ret (s/fspec :args (s/cat :resources ::handlers-resources)
-                      :ret ::fn-schemas-API))
-(defn attach-docs
-  "This is really where the fnhouse magic happens
-It's almost exactly the same as handlers/nss->handlers-fn
-The only difference seems to be attaching extra documentation pieces to the chain
+(comment
+  ;; This next bit of middleware has something to do with swagger.
+  ;; I remember that much about it.
+  ;; TODO: Remember what it was supposed to do and sort out a useful
+  ;; replaement
+  (s/def ::handlers-resources any?)
+  (s/def ::fn-schemas-API any?)
+  (s/fdef attach-docs
+          :args (s/cat :component ::http-routes
+                       :route-map ::http-route-map)
+          :ret (s/fspec :args (s/cat :resources ::handlers-resources)
+                        :ret ::fn-schemas-API))
+  (defn attach-docs
+    "This is really where the fnhouse magic happens
+  It's almost exactly the same as handlers/nss->handlers-fn
+  The only difference seems to be attaching extra documentation pieces to the chain
 
-TODO: What does that gain me?"
-  [component route-map]
-  (let [proto-handlers (handlers/nss->proto-handlers route-map)
-        all-docs (docs/all-docs (map :info proto-handlers))]
-    (-> component
-        (assoc :api-docs all-docs)
-        ((handlers/curry-resources proto-handlers)))))
+  TODO: What does that gain me?"
+    [component route-map]
+    (let [proto-handlers (handlers/nss->proto-handlers route-map)
+          all-docs (docs/all-docs (map :info proto-handlers))]
+      (-> component
+          (assoc :api-docs all-docs)
+          ((handlers/curry-resources proto-handlers)))))
 
-(s/fdef fnhouse-handling
-        :args (s/cat :component ::http-routes
-                     :route-map ::http-route-map)
-        :ret any?)
-(defn fnhouse-handling
-  "Convert the fnhouse routes defined in route-map to actual route handlers,
-making the component available as needed"
-  [component route-map]
-  (let [routes-with-documentation (attach-docs component route-map)
-        ;; TODO: if there's middleware to do coercion, add it here
-        ]
-    (routes/root-handler routes-with-documentation)))
+  (s/fdef fnhouse-handling
+          :args (s/cat :component ::http-routes
+                       :route-map ::http-route-map)
+          :ret any?)
+  (defn fnhouse-handling
+    "Convert the fnhouse routes defined in route-map to actual route handlers,
+  making the component available as needed"
+    [component route-map]
+    (let [routes-with-documentation (attach-docs component route-map)
+          ;; TODO: if there's middleware to do coercion, add it here
+          ]
+      (routes/root-handler routes-with-documentation))))
+
+(defn validator
+  "This is really a gaping hole that fnhouse leaves behind.
+
+I need to validate the incoming request and the outgoing response."
+  [f]
+  (let [{:keys [pre post] (or (routes-v1/spec req)
+                              (sente-v1/spec req))}
+        pre-validated (if pre
+                        (s/conform pre req)
+                        pre)]
+    (if (not= pre-validated :clojure.spec/invalid)
+      (when-let [raw (f pre-validated)]
+        (let [result (if post
+                       (s/conform post raw)
+                       raw)]
+          (if (not= result :clojure.spec/invalid)
+            result
+            {:status 500
+             :body (s/explain post raw)})))
+      {:status 400
+       :body (s/explain pre req)})))
+
+(s/fdef dispatcher
+        :args (s/cat :next-handler
+                     :com.frereth.web.routes.ring/http-request-handler)
+        :ret :com.frereth.web.routes.ring/http-request-handler)
+(defn dispatcher
+  [inner]
+  (fn [req]
+    ;; TODO: Come up with a better approach
+    (when-let [handler (or (routes-v1/dispatch req)
+                           (routes-sente/dispatch req))]
+      ;; TODO: Double check the order!
+      (-> req inner handler))))
 
 (s/fdef wrapped-root-handler
         :args (s/cat :component ::http-routes)
         :ret :com.frereth.web.routes.ring/http-request-handler)
 (defn wrapped-root-handler
-  "Returns a handler (with middleware) for 'normal' http requests"
+  "Returns a handler (with middleware) for 'normal' http requests
+
+Note that this approach to middleware chaining is difficult to debug
+
+TODO: Strongly consider breaking with tradition and running the calls
+in a more imperative sequence to make it easier to debug problems
+with this part."
   [component]
-  (-> (fnhouse-handling component {"v1" 'com.frereth.web.routes.v1
-                                   "sente" 'com.frereth.web.routes.sente})
+  (-> dispatcher
       index-middleware
       #_(wrap-sente-middleware (-> component :web-sock-handler :ch-sock))
       wrap-standard-middleware))
