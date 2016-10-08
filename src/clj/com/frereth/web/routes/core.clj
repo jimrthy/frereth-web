@@ -204,22 +204,23 @@ TODO: Should probably save it so we can examine later"
 
 I need to validate the incoming request and the outgoing response."
   [f]
-  (let [{:keys [pre post] (or (routes-v1/spec req)
-                              (sente-v1/spec req))}
-        pre-validated (if pre
-                        (s/conform pre req)
-                        pre)]
-    (if (not= pre-validated :clojure.spec/invalid)
-      (when-let [raw (f pre-validated)]
-        (let [result (if post
-                       (s/conform post raw)
-                       raw)]
-          (if (not= result :clojure.spec/invalid)
-            result
-            {:status 500
-             :body (s/explain post raw)})))
-      {:status 400
-       :body (s/explain pre req)})))
+  (fn [req]
+    (let [{:keys [pre post]} (or (routes-v1/spec req)
+                                 (routes-sente/spec req))
+          pre-validated (if pre
+                          (s/conform pre req)
+                          pre)]
+      (if (not= pre-validated :clojure.spec/invalid)
+        (when-let [raw (f pre-validated)]
+          (let [result (if post
+                         (s/conform post raw)
+                         raw)]
+            (if (not= result :clojure.spec/invalid)
+              result
+              {:status 500
+               :body (s/explain post raw)})))
+        {:status 400
+         :body (s/explain pre req)}))))
 
 (s/fdef dispatcher
         :args (s/cat :next-handler
