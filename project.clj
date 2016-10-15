@@ -99,8 +99,8 @@
                  ;; TODO: This needs to go away.
                  ;; It's up to the individual Apps.
                  [sablono "0.7.5"]
-                 [cljsjs/react "15.2.1-1"]
-                 [cljsjs/react-dom "15.2.1-1"]
+                 [cljsjs/react "15.3.1-0"]
+                 [cljsjs/react-dom "15.3.1-0"]
                  ;; TODO: Switch to bidi
                  ;; (it's built around plain data rather than macros
                  [secretary "1.2.3" :exclusions [org.clojure/clojure
@@ -109,7 +109,7 @@
                  ;;; Generally Useful
                  ;; Really should inherit my clojure version from this.
                  [com.frereth/client "0.1.0-SNAPSHOT"]
-                 [com.taoensso/sente "1.10.0" :exclusions [com.taoensso/encore
+                 [com.taoensso/sente "1.11.0" :exclusions [com.taoensso/encore
                                                            com.taoensso/timbre
                                                            org.clojure/clojure
                                                            org.clojure/core.async
