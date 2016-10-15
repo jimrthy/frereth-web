@@ -310,55 +310,74 @@ Besides, it's much more readable this way"
         :ret (s/fspec :args any? :ret any?))
 (defn reset-web-socket-handler!
   "Replaces the existing web-socket-handler (aka router)
-(if any) with a new one, built around ch-sock.
+(if any) with a new one, built around channel-socket.
 Returns a function for closing
 the event loop (which should be returned in the next
 call as the next stop-fn)
 
 It's very tempting to try to pretend that this is a pure
 function, but its main point is the side-effects around
-the event loop"
-  [{:keys [ch-sock ws-controller ws-stopper] :as web-sock-handler}]
-  (let [stop-fn ws-stopper]
-    (io!
-     (when stop-fn
-       (stop-fn))
-     (let [stopper (async/chan)
-           rcvr (:receive-chan ch-sock)
-           event-loop
-           (async/go
-             (loop []
-               (log/debug "Top of websocket event loop")
+the event loop
 
-               ;; TODO: I'm pretty sure I have 5 minutes defined somewhere useful
-               (let [t-o (async/timeout (* 1000 60 5))
-                     [v ch] (async/alts! [t-o stopper rcvr ws-controller])]
-                 (if v
-                   (do
-                     (let [event (-> v :event first)]
-                       (when-not (= event :chsk/ws-ping)
-                         ;; Handle the ping, but don't log about it: this happens far too often
-                         ;; to spam the logs with the basic fact
-                         (log/debug "Message to handle:\n" (util/pretty (select-keys v [:client-id :connected-uids :uid :event])))))
-                     (try
-                       (handle-ws-event-loop-msg {:ch ch
-                                                  :rcvr rcvr
-                                                  :web-sock-handler web-sock-handler}
-                                                 v)
-                       (catch Exception ex
-                         (log/error ex "Failed to handle message:\n" (util/pretty v))))
-                     (recur))
-                   (when (= ch t-o)
-                     ;; TODO: Should probably post a heartbeat to the
-                     ;; "real" server here
-                     (log/debug "Websocket event loop heartbeat")
-                     (recur)))))
-             (log/info "Websocket event loop exited"))
-           exit-fn (fn []
-                     (when stopper
-                       (log/debug "Closing the stopper channel as a signal to exit the event loop")
-                       (async/close! stopper)))]
-       exit-fn))))
+ws-stopper is a function to signal the previous handler
+(if any) to stop. It's most likely the exit-fn returned
+from a previous invocation of this method"
+  [{:keys [channel-socket ws-controller ws-stopper] :as web-sock-handler}]
+  (io!
+   (when ws-stopper
+     (log/debug "Calling an existing stop function")
+     (ws-stopper))
+
+   (let [rcvr (:receive-chan channel-socket)
+         stopper (async/chan)
+         event-loop
+         ;; Q: Does a thread, or even a pipeline, make more sense here?
+         (async/go
+           (loop []
+             (log/debug "Top of websocket event loop")
+
+             ;; TODO: I'm pretty sure I have 5 minutes defined somewhere useful
+             (let [t-o (async/timeout (* 1000 60 5))
+                   [v ch] (try
+                            (async/alts! [t-o stopper rcvr ws-controller])
+                            (catch java.lang.IllegalArgumentException ex
+                              (let [details {:timeout t-o
+                                             :stopper stopper
+                                             :receiver rcvr
+                                             :controller ws-controller}
+                                    msg (str "Failed polling for next socket event\n"
+                                             (util/pretty details))]
+                                (log/error ex msg)
+                                (throw (ex-info msg details)))))]
+               (if v
+                 (do
+                   (let [event (-> v :event first)]
+                     (when-not (= event :chsk/ws-ping)
+                       ;; Handle the ping, but don't log about it: this happens far too often
+                       ;; to spam the logs with the basic fact
+                       (log/debug "Message to handle:\n" (util/pretty (select-keys v [:client-id :connected-uids :uid :event])))))
+                   (try
+                     (handle-ws-event-loop-msg {:ch ch
+                                                :rcvr rcvr
+                                                :web-sock-handler web-sock-handler}
+                                               v)
+                     (catch Exception ex
+                       (log/error ex "Failed to handle message:\n" (util/pretty v))))
+                   (recur))
+                 (when (= ch t-o)
+                   ;; TODO: Should probably post a heartbeat to the
+                   ;; "real" server here
+                   (log/debug "Websocket event loop heartbeat")
+                   (recur)))))
+           (log/info "Websocket event loop exited"))
+         exit-fn (fn []
+                   ;; This seems backwards.
+                   ;; But this is really a function that can be called to trigger
+                   ;; an exit.
+                   (when stopper
+                     (log/debug "Closing the stopper channel as a signal to exit the event loop")
+                     (async/close! stopper)))]
+     exit-fn)))
 
 ;; For testing a status request
 ;; Wrote this to debug what was going on w/ my
@@ -480,7 +499,7 @@ the event loop"
 (defn broadcast!
   "Send message to all attached users"
   [router msg]
-  (let [ch-sock (:ch-sock router)
+  (let [ch-sock (:channel-socket router)
         uids (-> ch-sock :connected-uids deref :any)
         send! (:send! ch-sock)]
     (doseq [uid uids]
