@@ -28,6 +28,8 @@
   clojure.lang.IFn
   (invoke [this a] (p a)))
 
+;; I'm getting reflection warnings from these next 3 implementations
+;; TODO: Probably need to type-hint the writer param
 (defmethod print-method SystemWrapper [_ writer]
   (.write writer "#system \"<system>\""))
 

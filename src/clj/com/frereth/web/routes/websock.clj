@@ -43,12 +43,16 @@ sente at all."
 ;; Q: What is this?
 ;; A: In a lot of ways, this needs to be a map
 ;; for handling multiple connections
-(s/def ::frereth-server any?)
+;; Obnoxiously, what I seem to really need here is
+;; the ConnectionManager.
+;; Which is exactly what I have configured as the primary
+;; component.
+(s/def ::frereth-client :com.frereth.client.connection-manager/connection-manager)
 (s/def ::ws-controller (s/nilable :com.frereth.common.schema/async-channel))
 (s/def ::ws-stopper (s/fspec :args (s/cat :signal any?)
                              :ret any?))
 
-(s/def ::web-sock-handler (s/keys :req-un [::frereth-server]
+(s/def ::web-sock-handler (s/keys :req-un [::frereth-client]
                                   :opt-un [::channel-socket
                                            ::ws-controller
                                            ::ws-stopper]))
@@ -131,7 +135,7 @@ sente at all."
                       "\nEvent: " (:event ev-msg)
                       "\nData: " (:?data ev-msg)))
   (async/thread
-    (let [cpt (-> this :frereth-server :connection-manager)]
+    (let [cpt (-> this :connection-manager)]
       (if-let [response (app-pieces/initiate-handshake cpt (:?data ev-msg) 5 2000)]
         (do
           (reply this ev-msg :frereth/response {:status 200 :body "Handshake Completed"})
@@ -178,11 +182,12 @@ sente at all."
   (log/debug "Requesting namespace load:\n" (keys data))
   (let [background-thread
         (async/go
-          (let [mgr (-> this :frereth-server :connection-manager)
+          (let [mgr (-> this :connection-manager)
                 response
                 (manage
                  (let [result
-                       (con-man/rpc-sync this
+                       ;; Q: Is there any excuse for this to be synchronous?
+                       (con-man/rpc-sync mgr
                                          world
                                          :frereth/load-ns
                                          (select-keys data [:module-name :macro? :path]))]
@@ -422,7 +427,7 @@ the event loop"
 ;;; Component
 
 (defrecord WebSockHandler [channel-socket
-                           frereth-server
+                           frereth-client
                            ws-controller
                            ws-stopper]
   component/Lifecycle

@@ -261,7 +261,7 @@ with this part."
 (defrecord HttpRoutes [frereth-client
                        ;; This record winds up in the system as
                        ;; the http-router. It's confusing for it
-                       ;; to have another.
+                       ;; to have another directly inside itself
                        ;; TODO: change one name or the other
                        http-router
                        web-sock-handler]

@@ -104,8 +104,8 @@ extra-files: seq of absolute file paths to merge in. For
                        :web-server com.frereth.web.handler/ctor}
         dependencies  {:http-router [:frereth-client :web-sock-handler]
                        :web-server [:http-router]
-                       :web-sock-handler [:frereth-server]
-                       :frereth-server [:complete]}]
+                       :web-sock-handler [:frereth-client]
+                       :frereth-client [:complete]}]
     (cpt-dsl/build #:component-dsl.system{:structure constructors
                                           :dependencies dependencies}
                    {})))
