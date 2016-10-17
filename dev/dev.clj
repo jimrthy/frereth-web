@@ -20,6 +20,10 @@
             #_[figwheel-sidecar.repl-api :as repl-api]
             [taoensso.timbre :as log]))
 
+(def +frereth-component+
+  "Just to help me track which REPL is which"
+  'web)
+
 ;; We wrap the system in a system wrapper so that we can define a
 ;; print-method that will avoid recursion.
 (defrecord SystemWrapper [p]
