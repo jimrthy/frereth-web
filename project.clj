@@ -35,7 +35,7 @@
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [[org.clojure/clojure "1.9.0-alpha13"]  ; TODO: Make this go back away
+  :dependencies [[org.clojure/clojure "1.9.0-alpha14"]  ; TODO: Make this go back away
 
                  ;; Probably only useful server-side
                  [com.cognitect/transit-clj "0.8.290" :exclusions [com.fasterxml.jackson.core/jackson-core]]
