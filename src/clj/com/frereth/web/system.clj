@@ -2,7 +2,7 @@
   "This is where all the interesting stuff gets created."
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
-            [clojure.spec :as s]
+            [clojure.spec.alpha :as s]
             [com.stuartsierra.component :as component]
             [com.frereth.common.util :as util]
             [component-dsl.system]

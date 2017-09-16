@@ -5,7 +5,7 @@
   container's GC handle permgen
 
   TODO: Dump this. Use the one supplied by component-dsl"
-  (:require [clojure.spec :as s]
+  (:require [clojure.spec.alpha :as s]
             [com.stuartsierra.component :as component]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;

@@ -1,6 +1,6 @@
 (ns com.frereth.web.routes.ring
   "Details about the protocol that seem generally useful"
-  (:require [clojure.spec :as s]
+  (:require [clojure.spec.alpha :as s]
             [com.frereth.common.schema :as fr-sch]
             [com.frereth.common.zmq-socket])
   (:import [clojure.lang IPersistentMap ISeq]

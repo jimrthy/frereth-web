@@ -1,6 +1,6 @@
 (ns com.frereth.web.handler
   "This is where the web server lives"
-  (:require [clojure.spec :as s]
+  (:require [clojure.spec.alpha :as s]
             [com.frereth.web.routes.core :as routes]
             [com.frereth.web.routes.websock]
             [com.stuartsierra.component :as component]

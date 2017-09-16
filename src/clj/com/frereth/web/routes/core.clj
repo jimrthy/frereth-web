@@ -2,7 +2,7 @@
   "Why is mapping HTTP end-points to handlers so contentious?"
   (:require [clojure.core.async :as async]
             [clojure.java.io :as io]
-            [clojure.spec :as s]
+            [clojure.spec.alpha :as s]
             [com.frereth.common.util :as util]
             [com.frereth.client.communicator :as comms]
             [com.frereth.web.routes.ring :as fr-ring]

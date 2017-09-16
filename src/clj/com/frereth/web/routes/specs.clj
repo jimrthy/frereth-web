@@ -1,5 +1,5 @@
 (ns com.frereth.web.routes.specs
-  (:require [clojure.spec :as s]))
+  (:require [clojure.spec.alpha :as s]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Specs

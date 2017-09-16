@@ -5,7 +5,7 @@ Actually, it probably doesn't have to center around
 sente at all."
   (:require [clojure.core.async :as async]
             [clojure.core.match :refer [match]]
-            [clojure.spec :as s]
+            [clojure.spec.alpha :as s]
             [com.frereth.client.app-pieces :as app-pieces]
             [com.frereth.client.connection-manager :as con-man]
             [com.frereth.common.schema :as fr-skm]

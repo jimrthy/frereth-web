@@ -1,6 +1,6 @@
 (ns frereth.dispatcher
   (:require-macros [cljs.core.async.macros :as asyncm :refer (go go-loop)])
-  (:require [clojure.spec :as s]
+  (:require [clojure.spec.alpha :as s]
             [cljs.core.async :as async]
             [frereth.fsm :as fsm]
             [frereth.globals :as global]

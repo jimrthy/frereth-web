@@ -1,7 +1,7 @@
 (ns com.frereth.web.routes.v1
   "Because the API needs to be based on revisions"
   (:require [bidi.ring :refer (make-handler)]
-            [clojure.spec :as s]
+            [clojure.spec.alpha :as s]
             [com.frereth.client.communicator :as comms]
             [com.frereth.common.communication]
             [com.frereth.common.util :as util]

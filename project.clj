@@ -35,14 +35,15 @@
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [[org.clojure/clojure "1.9.0-alpha14"]  ; TODO: Make this go back away
+  :dependencies [[org.clojure/clojure "1.9.0-alpha17"]
+                 [org.clojure/tools.namespace "0.2.11" :exclusions [org.clojure/clojure]]
 
                  ;; Probably only useful server-side
-                 [com.cognitect/transit-clj "0.8.290" :exclusions [com.fasterxml.jackson.core/jackson-core]]
-                 [im.chit/hara.event "2.4.5"]
+                 [com.cognitect/transit-clj "0.8.300" :exclusions [com.fasterxml.jackson.core/jackson-core]]
+                 [im.chit/hara.event "2.5.10"]
                  ;; TODO: How many of these exclusions are still needed?
                  ;; And do more get added w/ this version bump?
-                 [org.immutant/immutant "2.1.5" :exclusions [clj-tuple
+                 [org.immutant/immutant "2.1.9" :exclusions [clj-tuple
                                                              org.clojure/clojure
                                                              org.clojure/java.classpath
                                                              org.clojure/tools.reader
@@ -55,52 +56,48 @@
                                                              org.jgroups/jgroups
                                                              riddley]]
                  ;; Q: Do I still need this?
-                 ;; (it's up to 3.3.0.Final...how far can I successfully push it?)
+                 ;; (it's up to 3.3.1.Final...how far can I successfully push it?)
                  ;; Some parts of it depend on this version, others on 3.2.1.GA
                  [org.jboss.logging/jboss-logging "3.1.4.GA"]
-                 [bidi "2.0.12"]
+                 [bidi "2.1.2"]
                  ;; TODO: This needs to go away
                  [prismatic/fnhouse "0.2.1" :exclusions [#_prismatic/plumbing
                                                          #_prismatic/schema]]
-                 [ring/ring-anti-forgery "1.0.1" :exclusions [org.clojure/clojure]]
+                 [ring/ring-anti-forgery "1.1.0" :exclusions [org.clojure/clojure]]
                  ;; Conflicts between ring-core and frereth-client
-                 ;; Should pick up the frereth-client version(s)
-                 ;; since they're specifically excluded below,
-                 ;; but I seem to be running into that managed-
-                 ;; dependencies issue again
-                 [clj-time "0.12.0"]
-                 [ring/ring-core "1.5.0" :exclusions [clj-time
+                 [clj-time "0.14.0"]
+                 [ring/ring-core "1.6.2" :exclusions [clj-time
                                                       commons-codec
                                                       joda-time
                                                       org.clojure/clojure
                                                       org.clojure/tools.reader]]
-                 [ring/ring-defaults "0.2.1" :exclusions [org.clojure/clojure
+                 [ring/ring-defaults "0.3.1" :exclusions [org.clojure/clojure
                                                           org.clojure/tools.reader]]
-                 [ring/ring-devel "1.5.0" :exclusions [org.clojure/tools.namespace]]
-                 [ring/ring-headers "0.2.0" :exclusions [org.clojure/clojure]]
-                 [ring-middleware-format "0.7.0" :exclusions [com.cognitect/transit-clj
+                 [ring/ring-devel "1.6.2" :exclusions [org.clojure/tools.namespace]]
+                 [ring/ring-headers "0.3.0" :exclusions [org.clojure/clojure]]
+                 [ring-middleware-format "0.7.2" :exclusions [com.cognitect/transit-clj
                                                               org.clojure/clojure
                                                               org.clojure/core.memoize
                                                               org.clojure/test.check
                                                               org.clojure/tools.reader]]
 
-                 ;;; Client-Specific...more or less
-                 [cljsjs/three "0.0.76-0"]
+                 ;;; Browser-Specific...more or less
+                 [cljsjs/three "0.0.84-0"]
                  #_[cljsjs/d3 "3.5.5-3"]
                  [cljsjs/gl-matrix "2.3.0-jenanwise-0"]
                  [com.cognitect/transit-cljs "0.8.239"]
                  ;; Q: Is there any remaining use for this?
                  [com.lucasbradstreet/cljs-uuid-utils "1.0.2"]
-                 [org.clojure/clojurescript "1.9.229" :exclusions [org.clojure/clojure
+                 [org.clojure/clojurescript "1.9.908" :exclusions [org.clojure/clojure
                                                                    org.clojure/tools.reader]]
                  ;; TODO: This needs to go away.
                  ;; It's up to the individual Apps.
                  [org.omcljs/om "0.9.0" :exclusions [org.clojure/clojure]]
                  ;; TODO: This needs to go away.
                  ;; It's up to the individual Apps.
-                 [sablono "0.7.5"]
-                 [cljsjs/react "15.3.1-0"]
-                 [cljsjs/react-dom "15.3.1-0"]
+                 [sablono "0.8.0"]
+                 [cljsjs/react "16.0.0-beta.5-1"]
+                 [cljsjs/react-dom "16.0.0-beta.5-1"]
                  ;; TODO: Switch to bidi
                  ;; (it's built around plain data rather than macros
                  [secretary "1.2.3" :exclusions [org.clojure/clojure

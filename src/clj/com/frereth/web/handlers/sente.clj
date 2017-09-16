@@ -1,6 +1,6 @@
 (ns com.frereth.web.handlers.sente
   "Handler implementations for sente connections"
-  (:require [clojure.spec :as s]
+  (:require [clojure.spec.alpha :as s]
             [ring.util.response :as res]
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.immutant :refer (get-sch-adapter)]))

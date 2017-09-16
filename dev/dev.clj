@@ -1,10 +1,9 @@
 (ns dev
-  (:require [cljeromq.core :as mq]
-            [clojure.core.async :as async]
+  (:require [clojure.core.async :as async]
             [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.inspector :as i]
-            [clojure.spec :as s]
+            [clojure.spec.alpha :as s]
             [clojure.string :as str]
             [clojure.pprint :refer (pprint)]
             [clojure.repl :refer :all]

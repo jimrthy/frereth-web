@@ -1,6 +1,6 @@
 (ns com.frereth.web.handlers.v1
   "Handler implementations for my initial API"
-  (:require [clojure.spec :as s]
+  (:require [clojure.spec.alpha :as s]
             [clojure.string :as string]  ; Really just for echo's reverse
             [ring.util.response :as res]))
 
