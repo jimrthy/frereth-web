@@ -3,8 +3,8 @@
   (:require [clojure.spec.alpha :as s]
             [com.frereth.web.routes.core :as routes]
             [com.frereth.web.routes.websock]
-            [com.stuartsierra.component :as component]
             [immutant.web :as web]
+            [integrant.core :as ig]
             [hara.event :refer (manage raise)]
             [taoensso.timbre :as log]))
 
@@ -37,35 +37,26 @@ handle the stopping callback. Which still doesn't seem to exist."
 (s/def ::server-options map?)
 ;; TODO: Document the schema that Immutant returns
 ;; from web/run that is being stored in here
-(s/def ::server (s/keys :req-un [::http-router
-                                 ::killer
-                                 ::server-options]))
-(defrecord Server [http-router
-                   killer
-                   server-options]
-    component/Lifecycle
-  (start
-   [this]
-   (when-not (:killer this)
-     ;; TODO: Ditch the magic numbers. Pull config from a config file/envvar
-     (let [server-options (web/run (:http-router http-router) {:host "0.0.0.0"
-                                                               :port 8093})]
-       (into this {:server-options server-options   ; really just for REPL access
-                   :killer (create-stopper server-options)}))))
-  (stop
-   [this]
-   (when-let [killer (:killer this)]
-     (killer)
-     (assoc this
-          :killer nil))))
+(s/def ::server (s/keys :req [::http-router
+                              ::killer
+                              ::server-options]))
+
+(defmethod ig/init-key ::server
+  [_ {:keys [::http-router]
+      :as this}]
+  ;; TODO: Ditch the magic numbers. Pull config from a config file/envvar
+  ;; c.f. weavejester environ
+  (let [server-options (web/run (:http-router http-router) {:host "0.0.0.0"
+                                                            :port 8093})]
+    (into this {::server-options server-options   ; really just for REPL access
+                ::killer (create-stopper server-options)})))
+
+;;; TODO: Odds are, pause/resume overrides would be useful
+
+(defmethod ig/halt-key! ::server
+  [_ {:keys [::killer]}]
+  (when killer
+    (killer)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
-
-;; TODO: ^:always-validate
-(s/fdef ctor
-        :args (s/cat :options ::server-description)
-        :ret ::server)
-(defn  ctor
-  [options]
-  (map->Server options))

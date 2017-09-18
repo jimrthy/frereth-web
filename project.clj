@@ -35,7 +35,8 @@
                          :optimizations :advanced
                          :pretty-print false}}]}
 
-  :dependencies [[org.clojure/clojure "1.9.0-alpha17"]
+  :dependencies [[integrant "0.6.1"]
+                 [org.clojure/clojure "1.9.0-alpha17"]
                  [org.clojure/tools.namespace "0.2.11" :exclusions [org.clojure/clojure]]
 
                  ;; Probably only useful server-side
@@ -178,7 +179,8 @@
                                                 ;;org.codehaus.plexus/plexus-utils
                                                 ring/ring-core]]]
 
-  :profiles {:dev-base {:immutant {:context-path "/frereth"
+  :profiles {:dev-base {:dependencies [[integrant/repl "0.2.0"]]
+                        :immutant {:context-path "/frereth"
                                    :nrepl-port 4242
                                    :lein-profiles [:dev]
                                    :env :dev}

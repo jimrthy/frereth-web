@@ -3,16 +3,25 @@
   (:require [clojure.edn :as edn]
             [clojure.java.io :as io]
             [clojure.spec.alpha :as s]
-            [com.stuartsierra.component :as component]
+            [com.frereth.client.system :as client]
             [com.frereth.common.util :as util]
-            [component-dsl.system]
-            [component-dsl.system :as cpt-dsl]
-            [io.aviso.config :as cfg]
+            [com.frereth.web.handler :as web-handler]
+            [com.frereth.web.routes.core :as web-routes]
+            [com.frereth.web.routes.websock :as ws-routes]
+            [integrant.core :as ig]
             [taoensso.timbre :as log])
   (:import [clojure.lang ExceptionInfo]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-;;; Schema
+;;; Specs
+
+(s/def ::complete #(instance? (class (promise) %)))
+
+(s/def ::system (s/keys :req [::client/system
+                              ::complete
+                              ::web-routes/http-router
+                              ::web-handler/server
+                              ::ws-routes/handler]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internals
@@ -28,21 +37,10 @@ TODO: Move to a Component in common"
                    (str (util/pick-home) "/" log-file-name ".log"))
   (log/info "Logging configured"))
 
-;; TODO: What's the schema?
-;; I'm using some pieces in here and ctor that are really internal
-;; to component-dsl.
-;; TODO: Don't do that.
-(defn combine-options
-  [command-line-args system-description]
-  (let [ctor-schemata (-> system-description :schemas cpt-dsl/translate-schematics!)]
-    (cfg/assemble-configuration {:prefix "frereth"
-                                 :schemas ctor-schemata
-                                 ;; seq of absolute file paths that will
-                                 ;; be loaded last.
-                                 ;; Typically for config files outside the classpath
-                                 :additional-files []
-                                 :args command-line-args
-                                 :profiles []})))
+(defmethod ig/init-key ::complete
+  [_ _]
+  ;; Q: Am I ever actually using this for anything?
+  {::finished (promise)})
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -50,15 +48,15 @@ TODO: Move to a Component in common"
 (s/fdef ctor
         :args (s/cat :unused-command-line-args any?
                      :unused-config-file-name ::config-file-name)
-        :ret :component-dsl.system/system-map)
+        :ret ::system)
 (defn ctor
   "Returns a system that's ready to start, based on config
-files.
+  files.
 
-Should mostly be pulling from EDN, which (realistically)
-should be pulling everything from environment variables.
+  Should mostly be pulling from EDN, which (realistically)
+  should be pulling everything from environment variables.
 
-command-line-args is really meant to be a seq of
+  command-line-args is really meant to be a seq of
   command-line options,
   which means we shouldn't have any particular use for them
   in this scenario.
@@ -72,43 +70,31 @@ command-line-args is really meant to be a seq of
   Merging {:foo {:bar \"baz\"}} with foo/gnip=gnop
     => {:foo {:bar \"baz\", :gnip \"gnop\"}}
 
-extra-files: seq of absolute file paths to merge in. For
+  extra-files: seq of absolute file paths to merge in. For
   the sake of setting up configuration outside the CLASSPATH
 "
   [command-line-args config-file-name]
 
-  ;; Q: Do I want to go back to something more similar to this
-  ;; original, commented-out version?
-  ;; (i.e. where I load the EDN description from a file instead
-  ;; of hard-coding it here)
-  (comment
-    (let [system-description (-> system-description-file-name
-                                 io/resource
-                                 io/reader
-                                 util/pushback-reader
-                                 edn/read)
-          options (combine-options command-line-args system-description)
-          pre-init (-> system-description
-                       :initialization-map
-                       (cpt-dsl/system-map options))]
-      (cpt-dsl/dependencies pre-init (:dependencies system-description))))
-
-  ;; This is where the real action starts these days
-  (let [constructors '{:complete component-dsl.done-manager/ctor
-                       ;; Poor name. This is really the frereth-client.
-                       ;; Or maybe the frereth-server-connection.
-                       ;; TODO: Either way, pick a better one.
-                       :frereth-client com.frereth.client.system/init
-                       :http-router com.frereth.web.routes.core/ctor
-                       :web-sock-handler com.frereth.web.routes.websock/ctor
-                       :web-server com.frereth.web.handler/ctor}
-        dependencies  {:http-router [:frereth-client :web-sock-handler]
-                       :web-server [:http-router]
-                       :web-sock-handler [:frereth-client]
-                       :frereth-client [:complete]}]
-    (cpt-dsl/build #:component-dsl.system{:structure constructors
-                                          :dependencies dependencies}
-                   {})))
+  ;; This *will* fail at runtime.
+  ;; I need to sort out a new technique for pulling
+  ;; options out of the environment, almost immediately.
+  ;; Actually, pretty much as soon as I can get this to
+  ;; compile.
+  (let [options (merge "this can't work" command-line-args config-file-name)]
+    ;; Q: Do I want to go back to something more similar to this
+    ;; original, commented-out version?
+    ;; (i.e. where I load the EDN description from a file instead
+    ;; of hard-coding it here)
+    {::client/system  (merge {::complete (ig/ref ::complete)}
+                             (get options ::client-system {}))
+     ::complete {}
+     ::web-routes/http-router (merge {::web-routes/client-system (ig/ref ::client/system)
+                                      ::web-routes/web-sock-handler (ig/ref ::ws-routes/web-sock-handler)}
+                                     (get options ::http-router {}))
+     ::web-handler/server (merge {::web-handler/http-router (ig/ref ::web-routes/http-router)}
+                                 (get options ::web-server {}))
+     ::ws-routes/handler (merge {::ws-routes/client-system (ig/ref ::client/system)}
+                                (get options ::ws-handler {}))}))
 
 ;; TODO: This needs to be a unit test
 (comment

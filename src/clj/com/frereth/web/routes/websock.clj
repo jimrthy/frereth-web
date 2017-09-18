@@ -11,8 +11,8 @@ sente at all."
             [com.frereth.common.schema :as fr-skm]
             [com.frereth.common.util :as util]
             [com.frereth.web.routes.ring :as fr-ring]
-            [com.stuartsierra.component :as component]
             [hara.event :refer (manage raise)]
+            [integrant.core :as ig]
             [taoensso.sente :as sente]
             [taoensso.sente.server-adapters.immutant :refer (sente-web-server-adapter)]
             [taoensso.timbre :as log :refer (debugf)])
@@ -47,7 +47,7 @@ sente at all."
 ;; the ConnectionManager.
 ;; Which is exactly what I have configured as the primary
 ;; component.
-(s/def ::frereth-client :com.frereth.client.connection-manager/connection-manager)
+(s/def ::frereth-client :com.frereth.client.connection-manager/manager)
 (s/def ::ws-controller (s/nilable :com.frereth.common.schema/async-channel))
 (s/def ::ws-stopper (s/fspec :args (s/cat :signal any?)
                              :ret any?))
@@ -445,17 +445,10 @@ from a previous invocation of this method"
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Component
 
-(defrecord WebSockHandler [channel-socket
-                           frereth-client
-                           ws-controller
-                           ws-stopper]
-  component/Lifecycle
-  (start
-    [this]
-    ;; This is one scenario where it doesn't make any sense to try to
-    ;; recycle the previous version
-    (when ws-controller
-      (async/close! ws-controller))
+(defmethod ig/init-key ::handler
+  [_ {:keys [::channel-socket
+             ::client-system]
+      :as this}]
     ;; Important Q: Who should be responsible for creating/destroying
     ;; channel-sock?
     (let [channel-socket (or channel-socket
@@ -472,22 +465,21 @@ from a previous invocation of this method"
                              (make-channel-socket))
           ws-controller (async/chan)
           almost-started (assoc this
-                                :channel-socket channel-socket
-                                :ws-controller ws-controller)
+                                ::channel-socket channel-socket
+                                ::ws-controller ws-controller)
           web-sock-stopper (reset-web-socket-handler! almost-started)]
       (assoc almost-started
-             :ws-stopper web-sock-stopper)))
-  (stop
-    [this]
-    (log/debug "Closing the ws-controller channel")
-    (when ws-controller (async/close! ws-controller))
-    (log/debug "Calling ws-stopper...which should be redundant")
-    (when ws-stopper
-      (ws-stopper))
-    (assoc this
-           :channel-socket nil
-           :ws-controller nil
-           :ws-stopper nil)))
+             ::ws-stopper web-sock-stopper)))
+
+(defmethod ig/halt-key! ::handler
+  [_ {:keys [::ws-controller
+             ::ws-stopper]
+      :as this}]
+  (log/debug "Closing the ws-controller channel")
+  (when ws-controller (async/close! ws-controller))
+  (log/debug "Calling ws-stopper...which should be redundant")
+  (when ws-stopper
+    (ws-stopper)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
@@ -508,11 +500,3 @@ from a previous invocation of this method"
 (comment (broadcast!
           (:http-router dev/system)
           [:frereth/ping nil]))
-
-(s/fdef ctor
-        ;; Q: Can I do better spec'ing the args?
-        :args ::web-sock-handler
-        :ret ::web-sock-handler)
-(defn ctor
-  [src]
-  (map->WebSockHandler src))

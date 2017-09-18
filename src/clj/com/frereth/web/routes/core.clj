@@ -9,7 +9,6 @@
             [com.frereth.web.routes.sente :as routes-sente]
             [com.frereth.web.routes.v1 :as routes-v1]
             [com.frereth.web.routes.websock :as ws]
-            [com.stuartsierra.component :as component]
             ;; TODO: These all need to go away
             ;; (the trick is finding suitable replacements)
             [fnhouse.docs :as docs]
@@ -17,6 +16,7 @@
             [fnhouse.routes :as routes]
             #_[fnhouse.schemas :as fn-schemas]
             [hara.event :refer (raise)]
+            [integrant.core :as ig]
             ;; Q: Am I getting the ring header middleware with this group?
             [ring.middleware.content-type :refer (wrap-content-type)]
             [ring.middleware.defaults]
@@ -28,9 +28,7 @@
             [ring.middleware.resource :refer (wrap-resource)]
             [ring.middleware.stacktrace :refer (wrap-stacktrace)]
             [ring.util.response :as response]
-            [taoensso.timbre :as log])
-  (:import [com.frereth.client.communicator ServerSocket]
-           [com.frereth.web.routes.websock WebSockHandler]))
+            [taoensso.timbre :as log]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Specs
@@ -48,9 +46,9 @@
 
 (s/def ::frereth-client :com.frereth.client.communicator/server-socket)
 (s/def ::http-router :com.frereth.web.routes.ring/http-request-handler)
-(s/def ::http-routes (s/keys :opt-un [::frereth-client
-                                      ::http-router
-                                      :com.frereth.web.routes.websock/web-sock-handler]))
+(s/def ::http-routes (s/keys :opt [::frereth-client
+                                   ::http-router
+                                   ::ws/web-sock-handler]))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Internal
@@ -161,44 +159,6 @@ TODO: Should probably save it so we can examine later"
         (wrap-content-type)
         (wrap-not-modified))))
 
-(comment
-  ;; This next bit of middleware has something to do with swagger.
-  ;; I remember that much about it.
-  ;; TODO: Remember what it was supposed to do and sort out a useful
-  ;; replaement
-  (s/def ::handlers-resources any?)
-  (s/def ::fn-schemas-API any?)
-  (s/fdef attach-docs
-          :args (s/cat :component ::http-routes
-                       :route-map ::http-route-map)
-          :ret (s/fspec :args (s/cat :resources ::handlers-resources)
-                        :ret ::fn-schemas-API))
-  (defn attach-docs
-    "This is really where the fnhouse magic happens
-  It's almost exactly the same as handlers/nss->handlers-fn
-  The only difference seems to be attaching extra documentation pieces to the chain
-
-  TODO: What does that gain me?"
-    [component route-map]
-    (let [proto-handlers (handlers/nss->proto-handlers route-map)
-          all-docs (docs/all-docs (map :info proto-handlers))]
-      (-> component
-          (assoc :api-docs all-docs)
-          ((handlers/curry-resources proto-handlers)))))
-
-  (s/fdef fnhouse-handling
-          :args (s/cat :component ::http-routes
-                       :route-map ::http-route-map)
-          :ret any?)
-  (defn fnhouse-handling
-    "Convert the fnhouse routes defined in route-map to actual route handlers,
-  making the component available as needed"
-    [component route-map]
-    (let [routes-with-documentation (attach-docs component route-map)
-          ;; TODO: if there's middleware to do coercion, add it here
-          ]
-      (routes/root-handler routes-with-documentation))))
-
 (defn validator
   "This is really a gaping hole that fnhouse leaves behind.
 
@@ -258,32 +218,11 @@ with this part."
 ;;; This wouldn't be worthy of any sort of existence outside
 ;;; the web server (until possibly it gets complex), except that
 ;;; the handlers are going to need access to the Connection
-(defrecord HttpRoutes [frereth-client
-                       ;; This record winds up in the system as
-                       ;; the http-router. It's confusing for it
-                       ;; to have another directly inside itself
-                       ;; TODO: change one name or the other
-                       http-router
-                       web-sock-handler]
-  component/Lifecycle
-  (start
-   [this]
-   (assert web-sock-handler)
-   (assoc this
-          :http-router (wrapped-root-handler this)))
-  (stop
-   [this]
-   (log/debug "HTTP Router should be stopped")
-   (assoc this
-          :http-router nil)))
+(defmethod ig/init-key ::http-router
+  [_ {:keys [::ws/web-sock-handler]
+      :as opts}]
+  {:pre [web-sock-handler]}
+  (assoc opts ::router (wrapped-root-handler opts)))
 
 ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ;;; Public
-
-;; TODO:  ^:always-validate
-(s/fdef ctor
-        :args (s/cat :options ::http-routes)
-        :ret ::http-routes)
-(defn ctor
-  [options]
-  (map->HttpRoutes options))
